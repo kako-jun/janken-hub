@@ -1,0 +1,17 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+# package.jsonとpackage-lock.jsonをコピー
+COPY package*.json ./
+
+# 依存関係をインストール
+RUN npm install
+
+# ソースコードはvolume マウントで提供
+
+# ポート公開
+EXPOSE 3000
+
+# 開発サーバー起動（volumeマウント前提）
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
