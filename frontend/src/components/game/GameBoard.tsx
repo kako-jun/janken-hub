@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Hand, GameSession, GameResult } from '../../types/game'
+import { Hand, IdoHand, GameSession, GameResult } from '../../types/game'
 import { HandButton } from '../ui/HandButton'
+import { IdoHandButton } from '../ui/IdoHandButton'
 import { websocketService } from '../../services/websocketService'
 
 interface GameBoardProps {
@@ -11,8 +12,8 @@ interface GameBoardProps {
 export const GameBoard = ({ session, onBack }: GameBoardProps) => {
   const [waiting, setWaiting] = useState(false)
   const [lastResult, setLastResult] = useState<{
-    playerHand: Hand
-    npcHand: Hand
+    playerHand: Hand | IdoHand
+    npcHand: Hand | IdoHand
     result: GameResult
   } | null>(null)
   const [currentScore, setCurrentScore] = useState(session.score)
@@ -34,7 +35,7 @@ export const GameBoard = ({ session, onBack }: GameBoardProps) => {
     }
   }, [])
 
-  const handleHandSelect = (hand: Hand) => {
+  const handleHandSelect = (hand: Hand | IdoHand) => {
     setWaiting(true)
     setLastResult(null)
 
@@ -67,13 +68,27 @@ export const GameBoard = ({ session, onBack }: GameBoardProps) => {
     }
   }
 
-  const getHandEmoji = (hand: Hand): string => {
-    const emojis = {
+  const getHandEmoji = (hand: Hand | IdoHand): string => {
+    const emojis: Record<Hand | IdoHand, string> = {
       rock: '✊',
       paper: '✋',
       scissors: '✌️',
+      well: '🕳️',
     }
     return emojis[hand]
+  }
+
+  const getRuleName = (): string => {
+    const names = {
+      classic_rps: 'Classic RPS',
+      achi_muite_hoi: 'Achi Muite Hoi',
+      ido_janken: 'Ido Janken',
+      limited_janken: 'Limited Janken',
+      arcade_coin: 'Arcade Coin',
+      glico_game: 'Glico Game',
+      tournament: 'Tournament',
+    }
+    return names[session.ruleType]
   }
 
   return (
@@ -86,7 +101,7 @@ export const GameBoard = ({ session, onBack }: GameBoardProps) => {
         >
           ← 戻る
         </button>
-        <h2 className="text-2xl font-bold text-white">Classic RPS</h2>
+        <h2 className="text-2xl font-bold text-white">{getRuleName()}</h2>
         <div className="w-24"></div>
       </div>
 
@@ -141,24 +156,55 @@ export const GameBoard = ({ session, onBack }: GameBoardProps) => {
 
       {/* 手選択ボタン */}
       <div className="flex gap-6">
-        <HandButton
-          hand="rock"
-          emoji="✊"
-          onClick={handleHandSelect}
-          disabled={waiting}
-        />
-        <HandButton
-          hand="paper"
-          emoji="✋"
-          onClick={handleHandSelect}
-          disabled={waiting}
-        />
-        <HandButton
-          hand="scissors"
-          emoji="✌️"
-          onClick={handleHandSelect}
-          disabled={waiting}
-        />
+        {session.ruleType === 'ido_janken' ? (
+          <>
+            <IdoHandButton
+              hand="rock"
+              emoji="✊"
+              onClick={handleHandSelect}
+              disabled={waiting}
+            />
+            <IdoHandButton
+              hand="paper"
+              emoji="✋"
+              onClick={handleHandSelect}
+              disabled={waiting}
+            />
+            <IdoHandButton
+              hand="scissors"
+              emoji="✌️"
+              onClick={handleHandSelect}
+              disabled={waiting}
+            />
+            <IdoHandButton
+              hand="well"
+              emoji="🕳️"
+              onClick={handleHandSelect}
+              disabled={waiting}
+            />
+          </>
+        ) : (
+          <>
+            <HandButton
+              hand="rock"
+              emoji="✊"
+              onClick={handleHandSelect}
+              disabled={waiting}
+            />
+            <HandButton
+              hand="paper"
+              emoji="✋"
+              onClick={handleHandSelect}
+              disabled={waiting}
+            />
+            <HandButton
+              hand="scissors"
+              emoji="✌️"
+              onClick={handleHandSelect}
+              disabled={waiting}
+            />
+          </>
+        )}
       </div>
 
       {waiting && (

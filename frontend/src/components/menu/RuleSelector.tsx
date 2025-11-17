@@ -21,14 +21,14 @@ const RULES: Rule[] = [
     name: 'Achi Muite Hoi',
     description: 'あっちむいてホイ',
     icon: '👆👇👈👉',
-    enabled: false,
+    enabled: true,
   },
   {
     id: 'ido_janken',
     name: 'Ido Janken',
-    description: '井戸じゃんけん',
+    description: '井戸じゃんけん（4択）',
     icon: '🪨📄✂️🕳️',
-    enabled: false,
+    enabled: true,
   },
 ]
 
