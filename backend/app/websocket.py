@@ -6,6 +6,8 @@ import uuid
 
 from .models import GameSession, Player, GameRuleType
 from .game_rules.classic_rps import ClassicRPS
+from .game_rules.achi_muite_hoi import AchiMuiteHoi
+from .game_rules.ido_janken import IdoJanken
 from .npc.random_ai import RandomAI
 
 logger = logging.getLogger(__name__)
@@ -17,7 +19,9 @@ class GameManager:
     def __init__(self):
         self.sessions: Dict[str, GameSession] = {}
         self.game_rules = {
-            "classic_rps": ClassicRPS()
+            "classic_rps": ClassicRPS(),
+            "achi_muite_hoi": AchiMuiteHoi(),
+            "ido_janken": IdoJanken()
         }
 
     def create_session(self, player_id: str, player_name: str, rule_type: GameRuleType) -> GameSession:
