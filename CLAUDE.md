@@ -742,34 +742,86 @@ npm run dev
 
 ---
 
+## 📂 プロジェクトドキュメント
+
+このプロジェクトには、以下の詳細ドキュメントが用意されています（`.claude/`ディレクトリ内）:
+
+- **[TODO.md](.claude/TODO.md)**: タスク一覧と優先順位
+- **[PROGRESS.md](.claude/PROGRESS.md)**: 開発進捗状況の詳細
+- **[DESIGN.md](.claude/DESIGN.md)**: アーキテクチャと設計ドキュメント
+- **[NEXT_STEPS.md](.claude/NEXT_STEPS.md)**: 今後の実装ロードマップ
+
+---
+
 ## 現在の実装状況
 
-✅ **完了**
+**全体進捗: 約35%** (2025-11-17更新)
+
+### ✅ 完全実装済み（100%）
+
+#### 基盤構築
 - プロジェクト構造（backend + frontend）
 - Docker Compose環境
 - FastAPI + WebSocket基盤
 - React + TypeScript環境
-- 基本的な型定義（Hand, GameResult, Player, GameSession）
+- 全ゲームルール対応の型定義
 - WebSocketクライアント（再接続ロジック付き）
 
-⚠️ **一部完了**
-- 型定義（拡張が必要）
+#### ゲームルールエンジン
+- ゲームルール基底クラス (`GameRuleBase`)
+- Classic RPS ルールエンジン (`classic_rps.py`)
+- Ido Janken ルールエンジン (`ido_janken.py`)
+- Achi Muite Hoi ルールエンジン (`achi_muite_hoi.py`) - バックエンドのみ
 
-❌ **未実装**
-- ゲームルールエンジン
-- NPC AI
-- UIコンポーネント（ルール選択、ゲーム画面）
-- スコアシステム
-- 階段ゲーム
-- トーナメント機能
+#### NPC AI
+- ランダムAI実装 (`random_ai.py`)
+- 全ルール対応の手選択ロジック
+- 方向選択ロジック（あっちむいてホイ用）
+
+#### フロントエンドUI
+- ルール選択画面 (`RuleSelector.tsx`)
+- ゲーム画面 (`GameBoard.tsx`)
+- 手選択ボタン（3択・4択対応）
+- スコア表示・結果表示
+- リアルタイムWebSocket通信
+
+### 🚧 一部実装済み（50%）
+
+#### Achi Muite Hoi（あっちむいてホイ）
+- ✅ バックエンド: じゃんけん部分のルールエンジン
+- ✅ バックエンド: 方向判定ロジック
+- ❌ フロントエンド: 方向選択UI
+- ❌ フロントエンド: 2段階ゲームフロー
+- ❌ バックエンド: WebSocketメッセージハンドラ統合
+
+### ❌ 未実装（0%）
+
+#### ゲームモード
+- Glico Game（階段ゲーム）
+- Limited Janken（限定じゃんけん）
+- Arcade Coin Janken（メダルゲーム）
+- Tournament（トーナメント）
+- Dai-janken（プログラミングじゃんけん）
+
+#### 機能拡張
+- NPC AI強化（Normal/Hard難易度）
+- アニメーション強化
+- サウンドエフェクト
+- 統計・ランキング
+- 多言語対応
+- テスト実装
 
 ---
 
 ## 次のアクション
 
-1. **型定義の拡張** (`frontend/src/types/game.ts` を更新)
-2. **ゲームルールエンジンの実装開始** (`backend/app/game_rules/`)
-3. **ルール選択メニューの作成** (`frontend/src/components/menu/RuleSelector.tsx`)
-4. **Classic RPSの実装とテスト**
+### 優先度S（直近1-2週間）
+1. **Achi Muite Hoi完成** - 方向選択UIと2段階ゲームフロー実装
+2. **Glico Game実装** - 階段ゲームのルールエンジンとビジュアル
 
-準備ができたら、具体的な実装を開始しましょう！
+### 優先度A（近日中）
+3. **Limited Janken実装** - 手の回数制限ロジック
+4. **Arcade Coin Janken実装** - コイン増減システム
+5. **UI/UX改善** - サウンドとアニメーション追加
+
+詳細は [NEXT_STEPS.md](.claude/NEXT_STEPS.md) を参照してください。
