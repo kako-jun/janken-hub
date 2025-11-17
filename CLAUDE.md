@@ -1,399 +1,674 @@
-# Cafferot - 全体実装計画
+# JankenHub (RPSHub) - 全体実装計画
 
 ## プロジェクト概要
-カフェロット (Cafferot) は、ユーザーが自作のカフェロットを展示し、カフェ経営とコミュニティを融合させた2Dゲームです。
 
-## 技術スタック
-- **フロントエンド**: React 18 + TypeScript + Tailwind CSS
-- **ビルドツール**: Vite
-- **レイアウト**: Flexbox + Absolute Positioning (Grid不使用)
-- **アニメーション**: Framer Motion
-- **リアルタイム通信**: WebSocket → Nostr (段階的移行)
-  - Phase 1: WebSocket (ws)
-  - Phase 2: 抽象化レイヤー導入
-  - Phase 3: Nostr Protocol
-- **状態管理**: React Context API / Zustand (必要に応じて)
-- **ファイル処理**: FileReader API (Base64変換)
-- **ストレージ**: LocalStorage → IndexedDB (大容量対応時)
-- **バックエンド**:
-  - 初期: Node.js + Express + WebSocket
-  - 将来: Nostrリレー（分散型、サーバーレス）
+**JankenHub**（じゃんけんハブ / RPSHub）は、世界中のじゃんけん文化を集約したオンライン対戦プラットフォームです。
+
+### コンセプト
+- 🌍 **世界のじゃんけん**: 各国・各地域のじゃんけんルールをプラグイン的にサポート
+- 🤖 **NPC対戦**: 第一段階はランダムAIとの対戦で各ルールを楽しめる
+- 🎲 **多様なバリエーション**: 通常じゃんけんから階段ゲーム、トーナメントまで
+- 🏆 **スコアシステム**: ポイント制、コイン制、ゴール制など多彩な評価方式
+- 🌐 **国際展開**: 多言語対応（日本語・英語）、各ルールの文化紹介
 
 ---
 
-## フェーズ1: 基盤構築 (Week 1-2)
+## 技術スタック
 
-### 1.1 プロジェクト構造の整備（name-name準拠）
+- **フロントエンド**: React 18 + TypeScript + Tailwind CSS
+- **ビルドツール**: Vite
+- **レイアウト**: Flexbox + CSS Grid
+- **アニメーション**: Framer Motion
+- **リアルタイム通信**: WebSocket
+  - 将来的にP2P対戦に拡張
+- **状態管理**: React Context API / Zustand (必要に応じて)
+- **ストレージ**: LocalStorage（戦績・スコア保存）
+- **バックエンド**: FastAPI (Python 3.11+) + WebSocket
+- **パッケージ管理**: uv (Backend) / npm (Frontend)
+- **開発環境**: Docker Compose
+- **コード品質**: ESLint + Prettier + Husky
 
-**プロジェクト全体構成:**
+---
+
+## 実装予定のゲームルール
+
+### 1. Classic RPS（通常じゃんけん）
+- グー・チョキ・パーの3択
+- 勝敗判定：グー > チョキ > パー > グー
+- ポイント制（先に3勝で勝利など）
+
+### 2. Achi Muite Hoi（あっちむいてホイ）
+1. じゃんけんで勝敗を決定
+2. 勝者が「上下左右」を選択
+3. 負者も同時に「上下左右」を選択
+4. 方向が一致すれば勝者の勝利、不一致なら継続
+
+### 3. Ido Janken（井戸じゃんけん）
+- グー・チョキ・パー・**井戸**の4択
+- 勝敗判定：
+  - グー > チョキ、パー
+  - チョキ > パー
+  - パー > グー
+  - **井戸** > グー（井戸に落ちる）、チョキ（井戸に落ちる）
+  - パー > 井戸（井戸に蓋をする）
+
+### 4. Limited Janken（限定じゃんけん）
+- 各プレイヤーは事前に「グー3回、チョキ3回、パー3回」など回数制限
+- 使い切ったらその手は使えない
+- 戦略性の高いじゃんけん
+
+### 5. Arcade Coin Janken（メダルゲーム風）
+- 勝つと仮想コイン払い出し（+10コイン）
+- 負けると没収（-5コイン）
+- コイン0になったらゲームオーバー
+- 目標コイン数到達でクリア
+
+### 6. Glico・Chocolate・Pineapple 階段ゲーム
+- じゃんけんで勝ったら歩数を進む
+  - グー（グリコ）: 3歩
+  - チョキ（チョコレート）: 6歩
+  - パー（パイナップル）: 10歩（※諸説あり）
+- 30段の階段をゴール目指す
+- **ぴったりゴール制**: オーバーするとスタートに戻る
+
+### 7. 大じゃんけん（プログラミングじゃんけん）
+- 参考: https://adhd-tama.hatenablog.com/entry/2018/06/09/182449
+- プログラミングで自動じゃんけんAIを作成
+- NPC vs NPC の自動対戦を観戦
+
+### 8. トーナメント生成機能
+- N人分（2^n人）のトーナメント表を自動生成
+- じゃんけんn連戦で勝者を決定
+- 結果をHTML/SVGで表示
+- プレイヤー自身もトーナメントに参加可能
+
+---
+
+## NPC設計（キャラクター名案）
+
+### Scissors（チョキ）系
+- **ユリウス・シザー** (Julius Scissor)
+- **シザーハンド** (Scissorhands)
+- **カットマン** (Cutman)
+- **ブレード卿** (Lord Blade)
+- **ハサミ侍** (Samurai Scissor)
+
+### Rock（グー）系
+- **ロッキー・バルボア** (Rocky Balboa風)
+- **ストーンエイジ** (Stone Age)
+- **グラニット伯爵** (Count Granite)
+- **岩拳王** (Rock Fist King)
+- **ペブルズ** (Pebbles：小石キャラ)
+
+### Paper（パー）系
+- **ペーパー・タイガー** (Paper Tiger)
+- **ドクター・スクロール** (Doctor Scroll)
+- **折り紙マスター** (Origami Master)
+
+---
+
+## 開発フェーズ
+
+### フェーズ1: 基盤構築（Week 1-2）✅
+
+#### 1.1 プロジェクト構造
+
 ```
-cafferot/                      # リポジトリルート
+janken-hub/
 ├── backend/                   # FastAPI バックエンド
 │   ├── app/
 │   │   ├── __init__.py
 │   │   ├── main.py           # FastAPI エントリーポイント
 │   │   ├── models.py         # Pydantic モデル
-│   │   └── websocket.py      # WebSocket管理
+│   │   ├── websocket.py      # WebSocket管理
+│   │   ├── game_rules/       # ゲームルールエンジン
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py       # 基底クラス
+│   │   │   ├── classic_rps.py
+│   │   │   ├── achi_muite_hoi.py
+│   │   │   └── ...
+│   │   └── npc/              # NPC AI
+│   │       ├── __init__.py
+│   │       └── random_ai.py
 │   ├── Dockerfile
-│   ├── pyproject.toml        # uv/pip 依存関係
-│   └── uv.lock
+│   └── pyproject.toml
 ├── frontend/                  # React + Vite フロントエンド
 │   ├── src/
 │   │   ├── components/
+│   │   │   ├── game/         # ゲーム画面
+│   │   │   ├── menu/         # ルール選択メニュー
+│   │   │   ├── npc/          # NPC表示
+│   │   │   └── ui/           # 共通UIコンポーネント
+│   │   ├── hooks/            # カスタムフック
 │   │   ├── services/
+│   │   │   ├── websocketService.ts
+│   │   │   └── gameService.ts
+│   │   ├── types/
+│   │   │   ├── game.ts       # ゲーム型定義
+│   │   │   └── index.ts
 │   │   ├── App.tsx
 │   │   └── main.tsx
 │   ├── Dockerfile.dev
-│   ├── package.json
-│   ├── vite.config.ts
-│   └── tailwind.config.js
+│   └── package.json
 ├── compose.yaml              # Docker Compose設定
-├── .gitignore
-├── README.md
-└── CLAUDE.md
+├── CLAUDE.md                 # このファイル
+└── README.md
 ```
 
-**`compose.yaml`（ルート）:**
-```yaml
-services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./backend/app:/app/app
-    environment:
-      - PYTHONUNBUFFERED=1
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
-    networks:
-      - cafferot-network
+#### 1.2 型定義（TypeScript）
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
-      - ./frontend/index.html:/app/index.html
-      - ./frontend/vite.config.ts:/app/vite.config.ts
-    environment:
-      - VITE_API_URL=http://localhost:8080
-    command: npm run dev -- --host 0.0.0.0
-    networks:
-      - cafferot-network
-    depends_on:
-      - backend
+**`frontend/src/types/game.ts`**
+```typescript
+// じゃんけんの手（基本3種）
+export type Hand = 'rock' | 'paper' | 'scissors'
 
-networks:
-  cafferot-network:
-    driver: bridge
-```
+// 井戸じゃんけん用
+export type IdoHand = Hand | 'well'
 
----
+// あっちむいてホイの方向
+export type Direction = 'up' | 'down' | 'left' | 'right'
 
-### 1.1.1 Frontend構成（name-name準拠）
-**`frontend/`**
-```
-frontend/
-├── src/
-│   ├── components/          # Reactコンポーネント
-│   │   ├── cafe/           # カフェ関連
-│   │   ├── cafferot/       # カフェロット関連
-│   │   ├── community/      # コミュニティ関連
-│   │   └── ui/             # 共通UIコンポーネント
-│   ├── hooks/              # カスタムフック
-│   ├── services/           # ビジネスロジック
-│   │   ├── websocketService.ts   # WebSocket実装
-│   │   └── storage.ts            # LocalStorage管理
-│   ├── types/              # TypeScript型定義
-│   ├── App.tsx
-│   ├── main.tsx
-│   └── index.css
-├── public/
-├── index.html
-├── Dockerfile.dev
-├── package.json
-├── vite.config.ts
-├── tsconfig.json
-├── tailwind.config.js
-├── .prettierrc
-└── eslint.config.js
-```
+// じゃんけんの結果
+export type GameResult = 'win' | 'lose' | 'draw'
 
-**`frontend/package.json`:**
-```json
-{
-  "name": "cafferot-frontend",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
-    "framer-motion": "^11.0.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@tailwindcss/postcss": "^4.1.17",
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
-    "@typescript-eslint/eslint-plugin": "^8.20.0",
-    "@typescript-eslint/parser": "^8.20.0",
-    "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.4.21",
-    "eslint": "^9.18.0",
-    "eslint-config-prettier": "^10.1.8",
-    "globals": "^16.5.0",
-    "prettier": "^3.4.2",
-    "prettier-plugin-tailwindcss": "^0.7.1",
-    "tailwindcss": "^4.1.17",
-    "typescript": "^5.7.3",
-    "vite": "^6.0.11"
+// ゲームルールタイプ
+export type GameRuleType =
+  | 'classic_rps'
+  | 'achi_muite_hoi'
+  | 'ido_janken'
+  | 'limited_janken'
+  | 'arcade_coin'
+  | 'glico_game'
+  | 'tournament'
+
+// プレイヤー
+export interface Player {
+  id: string
+  name: string
+  isNPC: boolean
+  hand?: Hand | IdoHand
+  direction?: Direction // あっちむいてホイ用
+}
+
+// ゲームセッション
+export interface GameSession {
+  id: string
+  ruleType: GameRuleType
+  player1: Player
+  player2: Player // NPC or Human
+  currentRound: number
+  result?: GameResult
+  score: {
+    player1: number
+    player2: number
+  }
+  createdAt: string
+}
+
+// プレイヤー統計
+export interface PlayerStats {
+  wins: number
+  losses: number
+  draws: number
+  totalGames: number
+  winRate: number
+}
+
+// 階段ゲーム用
+export interface GlicoGameState {
+  player1Position: number
+  player2Position: number
+  goalPosition: number // デフォルト30
+}
+
+// コインゲーム用
+export interface CoinGameState {
+  player1Coins: number
+  player2Coins: number
+  targetCoins: number
+}
+
+// 限定じゃんけん用
+export interface LimitedJankenState {
+  player1Remaining: {
+    rock: number
+    paper: number
+    scissors: number
+  }
+  player2Remaining: {
+    rock: number
+    paper: number
+    scissors: number
   }
 }
 ```
 
----
+#### 1.3 Pydanticモデル（Backend）
 
-### 1.1.2 Backend構成（name-name準拠・FastAPI）
-**`backend/`**
-```
-backend/
-├── app/
-│   ├── __init__.py
-│   ├── main.py             # FastAPIエントリーポイント
-│   ├── models.py           # Pydanticモデル（型定義）
-│   └── websocket.py        # WebSocket管理
-├── Dockerfile
-├── pyproject.toml          # uv/pip依存関係
-├── uv.lock
-└── .gitignore
-```
-
-**`backend/pyproject.toml`:**
-```toml
-[project]
-name = "cafferot-backend"
-version = "0.1.0"
-description = "カフェロット バックエンドAPI"
-requires-python = ">=3.11"
-dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.32.0",
-    "pydantic>=2.9.2",
-    "python-multipart>=0.0.12",
-    "websockets>=14.0",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.0.0",
-    "httpx>=0.27.0",
-]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["app"]
-
-[tool.uv]
-dev-dependencies = [
-    "pytest>=8.0.0",
-    "httpx>=0.27.0",
-]
-```
-
-**`backend/app/main.py`:**
-```python
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-import logging
-
-from .websocket import manager
-
-# ログ設定
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-app = FastAPI(
-    title="Cafferot API",
-    description="カフェロット リアルタイムAPI",
-    version="0.1.0",
-)
-
-# CORS設定
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # 開発中はすべて許可
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/")
-async def root():
-    """ヘルスチェック"""
-    return {"status": "ok", "message": "Cafferot API is running"}
-
-# WebSocketエンドポイントを登録
-from .websocket import websocket_endpoint
-app.websocket("/ws")(websocket_endpoint)
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
-```
-
----
-
-### 1.1.3 WebSocket管理（name-name準拠）
-**`backend/app/websocket.py`:**
-```python
-from fastapi import WebSocket, WebSocketDisconnect
-from typing import List
-import logging
-
-logger = logging.getLogger(__name__)
-
-class ConnectionManager:
-    """WebSocket接続を管理するクラス"""
-
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        """WebSocket接続を受け入れる"""
-        await websocket.accept()
-        self.active_connections.append(websocket)
-        logger.info(f"Client connected. Total: {len(self.active_connections)}")
-
-    def disconnect(self, websocket: WebSocket):
-        """WebSocket接続を切断する"""
-        self.active_connections.remove(websocket)
-        logger.info(f"Client disconnected. Total: {len(self.active_connections)}")
-
-    async def broadcast(self, message: dict):
-        """全クライアントにメッセージをブロードキャスト"""
-        for connection in self.active_connections:
-            await connection.send_json(message)
-
-# グローバルインスタンス
-manager = ConnectionManager()
-
-async def websocket_endpoint(websocket: WebSocket):
-    """WebSocketエンドポイント"""
-    await manager.connect(websocket)
-    try:
-        while True:
-            data = await websocket.receive_json()
-
-            # 全クライアントにブロードキャスト
-            await manager.broadcast(data)
-
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
-```
-
-### 1.2 Pydanticモデル定義（Backend）
-
-**`backend/app/models.py`:**
+**`backend/app/models.py`**
 ```python
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 
-class Cafferot(BaseModel):
-    """カフェロット"""
+# じゃんけんの手
+Hand = Literal["rock", "paper", "scissors"]
+IdoHand = Literal["rock", "paper", "scissors", "well"]
+Direction = Literal["up", "down", "left", "right"]
+
+# ゲーム結果
+GameResult = Literal["win", "lose", "draw"]
+
+# ゲームルールタイプ
+GameRuleType = Literal[
+    "classic_rps",
+    "achi_muite_hoi",
+    "ido_janken",
+    "limited_janken",
+    "arcade_coin",
+    "glico_game",
+    "tournament"
+]
+
+class Player(BaseModel):
+    """プレイヤー"""
     id: str
     name: str
-    imageData: str  # Base64 or URL
-    audioData: Optional[str] = None
+    isNPC: bool
+    hand: Optional[Hand | IdoHand] = None
+    direction: Optional[Direction] = None
+
+class GameSession(BaseModel):
+    """ゲームセッション"""
+    id: str
+    ruleType: GameRuleType
+    player1: Player
+    player2: Player
+    currentRound: int = 0
+    result: Optional[GameResult] = None
+    score: dict[str, int]
     createdAt: datetime
-    authorId: str
-    adoptionCount: int = 0
-    value: int = 0
 
-class Cafe(BaseModel):
-    """カフェ"""
-    id: str
-    ownerId: str
-    name: str
-    level: int
-    displayedCafferots: list[Cafferot]
+class PlayerStats(BaseModel):
+    """プレイヤー統計"""
+    wins: int = 0
+    losses: int = 0
+    draws: int = 0
+    totalGames: int = 0
+    winRate: float = 0.0
 
-class CafeStats(BaseModel):
-    """カフェステータス"""
-    revenue: int  # 売上
-    customerFrequency: int  # 来店頻度
-    regularCustomers: int  # 常連客数
-    popularity: int  # 人気度
+class GlicoGameState(BaseModel):
+    """階段ゲーム状態"""
+    player1Position: int = 0
+    player2Position: int = 0
+    goalPosition: int = 30
+
+class CoinGameState(BaseModel):
+    """コインゲーム状態"""
+    player1Coins: int = 100
+    player2Coins: int = 100
+    targetCoins: int = 200
+
+class LimitedJankenState(BaseModel):
+    """限定じゃんけん状態"""
+    player1Remaining: dict[str, int]
+    player2Remaining: dict[str, int]
 ```
 
-### 1.3 TypeScript型定義（Frontend）
+---
 
-**`frontend/src/types/cafferot.ts`:**
-```typescript
-// カフェロット（Pydanticモデルと同期）
-export interface Cafferot {
-  id: string
+### フェーズ2: ゲームルールエンジン（Week 3-4）
+
+#### 2.1 基底クラス設計
+
+**`backend/app/game_rules/base.py`**
+```python
+from abc import ABC, abstractmethod
+from ..models import Player, GameResult, Hand
+
+class GameRuleBase(ABC):
+    """ゲームルールの基底クラス"""
+
+    @abstractmethod
+    def judge(self, player1: Player, player2: Player) -> GameResult:
+        """勝敗判定"""
+        pass
+
+    @abstractmethod
+    def get_rule_name(self) -> str:
+        """ルール名を取得"""
+        pass
+
+    @abstractmethod
+    def get_description(self) -> str:
+        """ルール説明を取得"""
+        pass
+```
+
+#### 2.2 Classic RPS実装
+
+**`backend/app/game_rules/classic_rps.py`**
+```python
+from .base import GameRuleBase
+from ..models import Player, GameResult, Hand
+
+class ClassicRPS(GameRuleBase):
+    """通常じゃんけんルール"""
+
+    def judge(self, player1: Player, player2: Player) -> GameResult:
+        if player1.hand == player2.hand:
+            return "draw"
+
+        win_conditions = {
+            ("rock", "scissors"),
+            ("scissors", "paper"),
+            ("paper", "rock"),
+        }
+
+        if (player1.hand, player2.hand) in win_conditions:
+            return "win"
+        else:
+            return "lose"
+
+    def get_rule_name(self) -> str:
+        return "Classic Rock-Paper-Scissors"
+
+    def get_description(self) -> str:
+        return "Rock beats Scissors, Scissors beats Paper, Paper beats Rock"
+```
+
+#### 2.3 井戸じゃんけん実装
+
+**`backend/app/game_rules/ido_janken.py`**
+```python
+from .base import GameRuleBase
+from ..models import Player, GameResult, IdoHand
+
+class IdoJanken(GameRuleBase):
+    """井戸じゃんけんルール"""
+
+    def judge(self, player1: Player, player2: Player) -> GameResult:
+        h1, h2 = player1.hand, player2.hand
+
+        if h1 == h2:
+            return "draw"
+
+        # 井戸の特殊ルール
+        if h1 == "well":
+            return "win" if h2 in ["rock", "scissors"] else "lose"
+        if h2 == "well":
+            return "lose" if h1 in ["rock", "scissors"] else "win"
+
+        # 通常のじゃんけん判定
+        win_conditions = {
+            ("rock", "scissors"),
+            ("scissors", "paper"),
+            ("paper", "rock"),
+        }
+
+        return "win" if (h1, h2) in win_conditions else "lose"
+
+    def get_rule_name(self) -> str:
+        return "Ido Janken (井戸じゃんけん)"
+
+    def get_description(self) -> str:
+        return "Rock/Scissors fall into Well, Paper covers Well"
+```
+
+---
+
+### フェーズ3: NPC AI実装（Week 5）
+
+#### 3.1 ランダムAI
+
+**`backend/app/npc/random_ai.py`**
+```python
+import random
+from ..models import Player, Hand, IdoHand, Direction
+
+class RandomAI:
+    """ランダムに手を選ぶAI"""
+
+    def __init__(self, npc_name: str):
+        self.name = npc_name
+
+    def choose_hand(self, rule_type: str) -> Hand | IdoHand:
+        if rule_type == "ido_janken":
+            return random.choice(["rock", "paper", "scissors", "well"])
+        else:
+            return random.choice(["rock", "paper", "scissors"])
+
+    def choose_direction(self) -> Direction:
+        """あっちむいてホイ用"""
+        return random.choice(["up", "down", "left", "right"])
+```
+
+#### 3.2 難易度別AI（将来実装）
+
+- **Easy**: 完全ランダム
+- **Normal**: 確率調整（パーを少し多く出すなど）
+- **Hard**: プレイヤーの傾向を学習して対策
+
+---
+
+### フェーズ4: フロントエンド実装（Week 6-8）
+
+#### 4.1 ルール選択メニュー
+
+**`frontend/src/components/menu/RuleSelector.tsx`**
+```tsx
+import { GameRuleType } from '@/types/game'
+
+interface Rule {
+  id: GameRuleType
   name: string
-  imageData: string // Base64 or URL
-  audioData?: string
-  createdAt: string // ISOString
-  authorId: string
-  adoptionCount: number // 採用数
-  value: number // 価値
+  description: string
+  icon: string
+}
+
+const RULES: Rule[] = [
+  {
+    id: 'classic_rps',
+    name: 'Classic RPS',
+    description: '通常のじゃんけん',
+    icon: '✊✋✌️',
+  },
+  {
+    id: 'achi_muite_hoi',
+    name: 'Achi Muite Hoi',
+    description: 'あっちむいてホイ',
+    icon: '👆👇👈👉',
+  },
+  {
+    id: 'ido_janken',
+    name: 'Ido Janken',
+    description: '井戸じゃんけん',
+    icon: '🪨📄✂️🕳️',
+  },
+  // ... 他のルール
+]
+
+export const RuleSelector = ({ onSelect }: { onSelect: (rule: GameRuleType) => void }) => {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-6">
+      {RULES.map(rule => (
+        <button
+          key={rule.id}
+          onClick={() => onSelect(rule.id)}
+          className="p-6 bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow"
+        >
+          <div className="text-4xl mb-2">{rule.icon}</div>
+          <h3 className="text-lg font-bold">{rule.name}</h3>
+          <p className="text-sm text-gray-600">{rule.description}</p>
+        </button>
+      ))}
+    </div>
+  )
 }
 ```
 
-**`frontend/src/types/cafe.ts`:**
+#### 4.2 ゲーム画面
+
+**`frontend/src/components/game/GameBoard.tsx`**
+```tsx
+import { useState } from 'react'
+import { Hand, GameSession, Player } from '@/types/game'
+
+export const GameBoard = ({ session }: { session: GameSession }) => {
+  const [selectedHand, setSelectedHand] = useState<Hand | null>(null)
+
+  const handleHandSelect = (hand: Hand) => {
+    setSelectedHand(hand)
+    // WebSocketでサーバーに送信
+    websocketService.send('PLAY_HAND', { sessionId: session.id, hand })
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-500 to-purple-600">
+      {/* プレイヤー表示 */}
+      <div className="flex justify-between w-full max-w-4xl mb-8">
+        <PlayerCard player={session.player1} />
+        <div className="text-white text-2xl">VS</div>
+        <PlayerCard player={session.player2} />
+      </div>
+
+      {/* スコア表示 */}
+      <div className="bg-white rounded-lg p-4 mb-8">
+        <div className="text-2xl font-bold">
+          {session.score.player1} - {session.score.player2}
+        </div>
+      </div>
+
+      {/* 手選択ボタン */}
+      <div className="flex gap-4">
+        <HandButton hand="rock" emoji="✊" onClick={handleHandSelect} />
+        <HandButton hand="paper" emoji="✋" onClick={handleHandSelect} />
+        <HandButton hand="scissors" emoji="✌️" onClick={handleHandSelect} />
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+### フェーズ5: 階段ゲーム実装（Week 9）
+
+#### 5.1 階段ビジュアル
+
+**`frontend/src/components/game/GlicoStaircase.tsx`**
+```tsx
+export const GlicoStaircase = ({ state }: { state: GlicoGameState }) => {
+  return (
+    <div className="relative w-full h-[600px] bg-gradient-to-b from-sky-200 to-green-200">
+      {/* 階段描画 */}
+      {Array.from({ length: state.goalPosition }).map((_, i) => (
+        <div
+          key={i}
+          className="absolute border-2 border-gray-700 bg-yellow-600"
+          style={{
+            width: '60px',
+            height: '40px',
+            left: `${50 + (i % 2) * 40}px`,
+            bottom: `${i * 20}px`,
+          }}
+        >
+          {i + 1}
+        </div>
+      ))}
+
+      {/* プレイヤー1のコマ */}
+      <div
+        className="absolute text-4xl transition-all duration-500"
+        style={{
+          left: '50px',
+          bottom: `${state.player1Position * 20 + 40}px`,
+        }}
+      >
+        🏃
+      </div>
+
+      {/* プレイヤー2のコマ */}
+      <div
+        className="absolute text-4xl transition-all duration-500"
+        style={{
+          left: '90px',
+          bottom: `${state.player2Position * 20 + 40}px`,
+        }}
+      >
+        🤖
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+### フェーズ6: トーナメント機能（Week 10-11）
+
+#### 6.1 トーナメント生成
+
+**`backend/app/game_rules/tournament.py`**
+```python
+import math
+from typing import List
+from ..models import Player
+
+class TournamentBracket:
+    """トーナメント表生成"""
+
+    def __init__(self, players: List[Player]):
+        self.players = players
+        self.rounds = []
+
+    def generate_bracket(self):
+        """トーナメント表を生成"""
+        n = len(self.players)
+        # 2のべき乗に合わせる
+        bracket_size = 2 ** math.ceil(math.log2(n))
+
+        # 不足分はBYE（不戦勝）
+        bye_count = bracket_size - n
+
+        # ... トーナメントロジック
+```
+
+---
+
+### フェーズ7: 国際化対応（Week 12）
+
+#### 7.1 多言語対応
+
+**`frontend/src/i18n/translations.ts`**
 ```typescript
-import type { Cafferot } from './cafferot'
-
-// カフェ
-export interface Cafe {
-  id: string
-  ownerId: string
-  name: string
-  level: number
-  displayedCafferots: Cafferot[]
-}
-
-// カフェステータス
-export interface CafeStats {
-  revenue: number // 売上
-  customerFrequency: number // 来店頻度
-  regularCustomers: number // 常連客数
-  popularity: number // 人気度
+export const translations = {
+  en: {
+    classic_rps: 'Classic Rock-Paper-Scissors',
+    achi_muite_hoi: 'Direction Game',
+    ido_janken: 'Well Janken',
+    rock: 'Rock',
+    paper: 'Paper',
+    scissors: 'Scissors',
+    well: 'Well',
+  },
+  ja: {
+    classic_rps: '通常じゃんけん',
+    achi_muite_hoi: 'あっちむいてホイ',
+    ido_janken: '井戸じゃんけん',
+    rock: 'グー',
+    paper: 'パー',
+    scissors: 'チョキ',
+    well: '井戸',
+  },
 }
 ```
 
-**`frontend/src/types/index.ts`:**
-```typescript
-export * from './cafferot'
-export * from './cafe'
-```
+---
 
-### 1.4 開発コマンド（name-name準拠）
+## 開発コマンド
 
-**Docker Compose使用（推奨）:**
+### Docker Compose使用（推奨）
 ```bash
 # 全サービス起動
 docker compose up
@@ -408,13 +683,12 @@ docker compose logs -f
 docker compose down
 ```
 
-**ローカル開発（Dockerなし）:**
+### ローカル開発（Dockerなし）
 ```bash
 # Backend
 cd backend
-uv venv
+uv sync
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-uv pip install -e .
 uvicorn app.main:app --reload --port 8080
 
 # Frontend
@@ -423,701 +697,11 @@ npm install
 npm run dev
 ```
 
-**アクセスURL:**
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:8080`
-- Backend API Docs: `http://localhost:8080/docs`
-- WebSocket: `ws://localhost:8080/ws`
-
-### 1.5 Dockerfileの準備
-
-**`backend/Dockerfile`:**
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# uvをインストール
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-
-# 依存関係をコピー
-COPY pyproject.toml uv.lock ./
-
-# 依存関係をインストール
-RUN uv sync --frozen
-
-# アプリケーションコードをコピー
-COPY app ./app
-
-# ポート公開
-EXPOSE 8080
-
-# 起動コマンド
-CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
-```
-
-**`frontend/Dockerfile.dev`:**
-```dockerfile
-FROM node:20-slim
-
-WORKDIR /app
-
-# package.jsonとpackage-lock.jsonをコピー
-COPY package*.json ./
-
-# 依存関係をインストール
-RUN npm install
-
-# ソースコードはvolume マウントで提供
-
-# ポート公開
-EXPOSE 3000
-
-# 開発サーバー起動（volumeマウント前提）
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
-```
-
-### 1.6 基本的なルーティング設定 (Frontend)
-- `/` - トップページ (カフェ一覧)
-- `/cafe/:id` - 個別カフェ表示
-- `/my-cafe` - 自分のカフェ管理
-- `/upload` - カフェロットアップロード（描画エディタなし）
-- `/gallery` - リアルタイムギャラリー
-
----
-
-## フェーズ2: カフェ経営システム (Week 3-4)
-
-### 2.1 カフェビュー実装
-**コンポーネント構成:**
-```
-<CafeView>
-  ├── <CafeBackground> (2D背景)
-  ├── <Counter> (カウンター)
-  ├── <Tables> (テーブル群)
-  ├── <DisplayWall> (展示壁)
-  │   └── <CafferotFrame> × N
-  ├── <Customers> (常連客)
-  └── <CafeStats> (売上表示)
-```
-
-**実装機能:**
-- Flexbox + Absolute Positioning によるレイアウト
-- 横スクロール可能なカフェビュー
-- 展示壁（上部固定、Flexで横並び）
-- カウンター、テーブル（Flexで配置）
-- 常連客（Absolute配置でアニメーション）
-- Framer Motion によるアニメーション
-
-### 2.2 経営ロジック
-**`src/services/cafeManagement.ts`**
-```typescript
-// 売上計算
-export const calculateRevenue = (cafe: Cafe): number => {
-  const baseRevenue = cafe.level * 100
-  const cafferotBonus = cafe.displayedCafferots.reduce(
-    (sum, cr) => sum + cr.value * 10,
-    0
-  )
-  return baseRevenue + cafferotBonus
-}
-
-// 価値上昇処理
-export const increaseCafferotValue = (
-  cafferot: Cafferot,
-  adoptionCount: number
-): Cafferot => {
-  return {
-    ...cafferot,
-    adoptionCount,
-    value: Math.floor(Math.log(adoptionCount + 1) * 100),
-  }
-}
-```
-
-### 2.3 アップグレードシステム
-- 内装アップグレード (売上+10%)
-- メニュー拡張 (来店頻度+5%)
-- 展示スペース拡張 (展示枠+1)
-
----
-
-## フェーズ3: カフェロット作成システム (Week 5-6)
-
-> **シンプル化戦略**: 描画エディタは不要、ファイルアップロードのみで実装
-
-### 3.1 カフェロットアップロード機能
-**`packages/cafferot-frontend/src/components/cafferot/CafferotUploader.tsx`**
-
-```typescript
-import { useState } from 'react'
-import type { Cafferot } from 'cafferot-shared'
-
-export const CafferotUploader = () => {
-  const [name, setName] = useState('')
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [audioFile, setAudioFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file && file.type.startsWith('image/')) {
-      setImageFile(file)
-
-      // プレビュー生成
-      const reader = new FileReader()
-      reader.onload = (e) => setPreview(e.target?.result as string)
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file && file.type.startsWith('audio/')) {
-      setAudioFile(file)
-    }
-  }
-
-  const handleSubmit = async () => {
-    if (!name || !imageFile) return
-
-    const imageData = await fileToBase64(imageFile)
-    const audioData = audioFile ? await fileToBase64(audioFile) : undefined
-
-    const cafferot: Cafferot = {
-      id: crypto.randomUUID(),
-      name,
-      imageData,
-      audioData,
-      createdAt: new Date(),
-      authorId: getCurrentUser().id,
-      adoptionCount: 0,
-      value: 0,
-    }
-
-    await saveCafferot(cafferot)
-    // WebSocketで配信
-    publishCafferot(cafferot)
-  }
-
-  return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-lg">
-      <h2 className="text-2xl font-bold mb-6">カフェロットを作成</h2>
-
-      {/* 名前入力 */}
-      <input
-        type="text"
-        placeholder="カフェロットの名前"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="w-full p-2 border rounded mb-4"
-      />
-
-      {/* 画像アップロード */}
-      <div className="mb-4">
-        <label className="block mb-2 font-semibold">画像（必須）</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageUpload}
-          className="w-full"
-        />
-        {preview && (
-          <img
-            src={preview}
-            alt="Preview"
-            className="mt-4 w-full h-64 object-contain border rounded"
-          />
-        )}
-      </div>
-
-      {/* 音声アップロード */}
-      <div className="mb-4">
-        <label className="block mb-2 font-semibold">音声（任意）</label>
-        <input
-          type="file"
-          accept="audio/*"
-          onChange={handleAudioUpload}
-          className="w-full"
-        />
-        {audioFile && (
-          <audio controls className="mt-2 w-full">
-            <source src={URL.createObjectURL(audioFile)} />
-          </audio>
-        )}
-      </div>
-
-      {/* 投稿ボタン */}
-      <button
-        onClick={handleSubmit}
-        disabled={!name || !imageFile}
-        className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-      >
-        カフェロットを投稿
-      </button>
-    </div>
-  )
-}
-```
-
-### 3.2 ファイル処理ユーティリティ
-**`packages/cafferot-shared/src/utils/file.ts`**
-
-```typescript
-export const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-export const validateImage = (file: File): boolean => {
-  const validTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-  const maxSize = 5 * 1024 * 1024 // 5MB
-
-  return validTypes.includes(file.type) && file.size <= maxSize
-}
-
-export const validateAudio = (file: File): boolean => {
-  const validTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg']
-  const maxSize = 10 * 1024 * 1024 // 10MB
-
-  return validTypes.includes(file.type) && file.size <= maxSize
-}
-```
-
-### 3.3 LocalStorage保存
-**`packages/cafferot-frontend/src/services/storage.ts`**
-
-```typescript
-import type { Cafferot } from 'cafferot-shared'
-
-const STORAGE_KEY = 'cafferots'
-
-export const saveCafferot = async (cafferot: Cafferot): Promise<void> => {
-  const existing = getCafferots()
-  existing.push(cafferot)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(existing))
-}
-
-export const getCafferots = (): Cafferot[] => {
-  const data = localStorage.getItem(STORAGE_KEY)
-  return data ? JSON.parse(data) : []
-}
-
-export const deleteCafferot = (id: string): void => {
-  const cafferots = getCafferots().filter(c => c.id !== id)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cafferots))
-}
-```
-
-### 3.4 IndexedDB対応（将来的な拡張）
-
-大量の画像・音声データに対応する場合:
-
-```typescript
-// packages/cafferot-frontend/src/services/indexedDB.ts
-import { openDB, DBSchema } from 'idb'
-
-interface CafferotDB extends DBSchema {
-  cafferots: {
-    key: string
-    value: Cafferot
-  }
-}
-
-const db = await openDB<CafferotDB>('cafferot-db', 1, {
-  upgrade(db) {
-    db.createObjectStore('cafferots', { keyPath: 'id' })
-  },
-})
-
-export const saveCafferotToDB = async (cafferot: Cafferot) => {
-  await db.put('cafferots', cafferot)
-}
-
-export const getCafferotsFromDB = async () => {
-  return await db.getAll('cafferots')
-}
-```
-
----
-
-## フェーズ4: コミュニティ機能 (Week 7-8)
-
-### 4.1 カフェ一覧ページ
-**`src/components/community/CafeList.tsx`**
-- 格子状レイアウト (Grid)
-- ソート機能 (人気順、新着順)
-- ページネーション
-- サムネイル表示
-
-### 4.2 カフェ訪問機能
-**`src/components/community/CafeVisit.tsx`**
-- 他人のカフェを閲覧
-- 展示されたカフェロットの詳細表示
-- 採用ボタン
-
-### 4.3 採用システム
-```typescript
-export const adoptCafferot = (
-  cafferot: Cafferot,
-  targetCafe: Cafe
-): void => {
-  // 採用数を増やす
-  cafferot.adoptionCount++
-
-  // 価値を再計算
-  cafferot.value = calculateValue(cafferot.adoptionCount)
-
-  // 自分のカフェに追加
-  targetCafe.displayedCafferots.push(cafferot)
-}
-```
-
-### 4.4 盗みシステム
-**`src/components/community/StealAction.tsx`**
-- タップ速度測定 (タイマー + クリックカウント)
-- 速度に応じた価値変動
-```typescript
-export const stealCafferot = (
-  cafferot: Cafferot,
-  tapSpeed: number // taps per second
-): Cafferot => {
-  const valueMultiplier = Math.min(tapSpeed / 10, 1) // 最大100%
-  return {
-    ...cafferot,
-    value: Math.floor(cafferot.value * valueMultiplier),
-  }
-}
-```
-
----
-
-## フェーズ5: リアルタイム通信機能 (Week 9-10)
-
-> **段階的移行戦略**: WebSocket → Nostr
->
-> 1. **Phase 5A**: WebSocketで実装・動作確認
-> 2. **Phase 5B**: 抽象化レイヤーの導入
-> 3. **Phase 5C**: Nostrプロトコルへ段階的移行
-
-### 5.1 WebSocketサーバー構築 (Phase 5A)
-**`server/index.js`** (Node.js + ws)
-```javascript
-const WebSocket = require('ws')
-const wss = new WebSocket.Server({ port: 8080 })
-
-const clients = new Set()
-
-wss.on('connection', (ws) => {
-  clients.add(ws)
-
-  ws.on('message', (message) => {
-    const data = JSON.parse(message)
-
-    // 全クライアントにブロードキャスト
-    clients.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(data))
-      }
-    })
-  })
-
-  ws.on('close', () => {
-    clients.delete(ws)
-  })
-})
-```
-
-### 5.2 抽象化レイヤーの設計 (Phase 5B)
-**`src/services/realtimeService.ts`** (プロトコル非依存)
-```typescript
-// 抽象インターフェース
-export interface IRealtimeService {
-  connect(): Promise<void>
-  disconnect(): void
-  publishCafferot(cafferot: Cafferot): Promise<void>
-  subscribeToCafferots(callback: (cafferot: Cafferot) => void): void
-  onConnectionChange(callback: (connected: boolean) => void): void
-}
-
-// WebSocket実装
-export class WebSocketRealtimeService implements IRealtimeService {
-  private ws: WebSocket | null = null
-  private callbacks: ((cafferot: Cafferot) => void)[] = []
-
-  async connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.ws = new WebSocket('ws://localhost:8080')
-
-      this.ws.onopen = () => {
-        console.log('WebSocket connected')
-        resolve()
-      }
-
-      this.ws.onmessage = (event) => {
-        const data = JSON.parse(event.data)
-        if (data.type === 'NEW_CAFFEROT') {
-          this.callbacks.forEach(cb => cb(data.payload))
-        }
-      }
-
-      this.ws.onerror = reject
-    })
-  }
-
-  disconnect(): void {
-    this.ws?.close()
-  }
-
-  async publishCafferot(cafferot: Cafferot): Promise<void> {
-    this.ws?.send(JSON.stringify({
-      type: 'NEW_CAFFEROT',
-      payload: cafferot,
-    }))
-  }
-
-  subscribeToCafferots(callback: (cafferot: Cafferot) => void): void {
-    this.callbacks.push(callback)
-  }
-
-  onConnectionChange(callback: (connected: boolean) => void): void {
-    if (this.ws) {
-      this.ws.onopen = () => callback(true)
-      this.ws.onclose = () => callback(false)
-    }
-  }
-}
-
-// Nostr実装 (Phase 5C で追加)
-export class NostrRealtimeService implements IRealtimeService {
-  // 後で実装
-}
-
-// ファクトリーパターンで切り替え可能に
-export const createRealtimeService = (): IRealtimeService => {
-  const useNostr = import.meta.env.VITE_USE_NOSTR === 'true'
-  return useNostr
-    ? new NostrRealtimeService()
-    : new WebSocketRealtimeService()
-}
-```
-
-### 5.3 コンポーネントでの利用
-**`src/components/community/RealtimeGallery.tsx`**
-```typescript
-import { useEffect, useState } from 'react'
-import { createRealtimeService } from '@/services/realtimeService'
-
-export const RealtimeGallery = () => {
-  const [cafferots, setCafferots] = useState<Cafferot[]>([])
-  const [connected, setConnected] = useState(false)
-
-  useEffect(() => {
-    const service = createRealtimeService()
-
-    // 接続状態の監視
-    service.onConnectionChange(setConnected)
-
-    // カフェロットの購読
-    service.subscribeToCafferots((cafferot) => {
-      setCafferots(prev => [cafferot, ...prev])
-    })
-
-    // 接続
-    service.connect()
-
-    return () => service.disconnect()
-  }, [])
-
-  return (
-    <div>
-      <div>Status: {connected ? '🟢 Connected' : '🔴 Disconnected'}</div>
-      {cafferots.map(cafferot => (
-        <CafferotCard key={cafferot.id} cafferot={cafferot} />
-      ))}
-    </div>
-  )
-}
-```
-
-### 5.4 Nostrへの移行 (Phase 5C - 将来)
-**`src/services/nostrRealtimeService.ts`**
-```typescript
-import { SimplePool, Event, getPublicKey, finishEvent } from 'nostr-tools'
-
-export class NostrRealtimeService implements IRealtimeService {
-  private pool: SimplePool
-  private relays = [
-    'wss://relay.damus.io',
-    'wss://nos.lol',
-    'wss://relay.nostr.band'
-  ]
-  private callbacks: ((cafferot: Cafferot) => void)[] = []
-  private subscription: any = null
-
-  constructor() {
-    this.pool = new SimplePool()
-  }
-
-  async connect(): Promise<void> {
-    console.log('Nostr connected to relays:', this.relays)
-    return Promise.resolve()
-  }
-
-  disconnect(): void {
-    this.subscription?.unsub()
-    this.pool.close(this.relays)
-  }
-
-  async publishCafferot(cafferot: Cafferot): Promise<void> {
-    const event: Event = {
-      kind: 1, // テキストノート
-      created_at: Math.floor(Date.now() / 1000),
-      tags: [
-        ['t', 'cafferot'], // カフェロットタグ
-        ['title', cafferot.name]
-      ],
-      content: JSON.stringify(cafferot),
-      pubkey: getPublicKey(/* 秘密鍵 */),
-    }
-
-    const signedEvent = finishEvent(event, /* 秘密鍵 */)
-    await this.pool.publish(this.relays, signedEvent)
-  }
-
-  subscribeToCafferots(callback: (cafferot: Cafferot) => void): void {
-    this.callbacks.push(callback)
-
-    this.subscription = this.pool.sub(this.relays, [{
-      kinds: [1],
-      '#t': ['cafferot'],
-      limit: 50
-    }])
-
-    this.subscription.on('event', (event: Event) => {
-      try {
-        const cafferot = JSON.parse(event.content)
-        this.callbacks.forEach(cb => cb(cafferot))
-      } catch (e) {
-        console.error('Failed to parse cafferot:', e)
-      }
-    })
-  }
-
-  onConnectionChange(callback: (connected: boolean) => void): void {
-    // Nostrは常に接続状態とみなす（リレーが複数あるため）
-    callback(true)
-  }
-}
-```
-
-### 5.5 環境変数での切り替え
-**`.env`**
-```bash
-# WebSocketモード（デフォルト）
-VITE_USE_NOSTR=false
-
-# Nostrモード（移行後）
-# VITE_USE_NOSTR=true
-```
-
-**移行チェックリスト:**
-- [ ] WebSocketで全機能が動作
-- [ ] 抽象化レイヤーのテスト完了
-- [ ] Nostr実装の追加
-- [ ] 並行動作テスト（両方で同じデータが見える）
-- [ ] Nostrへ完全移行
-- [ ] WebSocketコードの削除（オプション）
-
----
-
-## フェーズ6: アクション要素とポリッシュ (Week 11-12)
-
-### 6.1 タップアクション演出
-- **豆を挽く**: 円形ゲージを回転させる
-- **皿を洗う**: 左右にスワイプ
-- **コーヒーを淹れる**: タイミングゲーム
-
-### 6.2 アニメーション強化
-- CSS Animations / Framer Motion
-- キャラクターの動き
-- エフェクト (パーティクル、トランジション)
-
-### 6.3 サウンド追加
-- BGM (カフェ音楽)
-- SE (採用時、盗み成功時、売上時)
-
-### 6.4 レスポンシブ対応
-- モバイルレイアウト調整
-- タッチ操作最適化
-
----
-
-## フェーズ7: デプロイと最適化 (Week 13-14)
-
-### 7.1 パフォーマンス最適化
-- 画像の遅延読み込み
-- メモ化 (`useMemo`, `useCallback`)
-- Virtual Scrolling (大量データ対応)
-
-### 7.2 セキュリティ対策
-- XSS対策 (入力サニタイズ)
-- CSRF対策
-- WebSocket認証
-
-### 7.3 デプロイ
-- **フロントエンド**: Vercel / Netlify / GitHub Pages
-- **バックエンド**: Railway / Render / Heroku
-- **WebSocket**: 専用サーバー or サーバーレス (Supabase Realtime)
-
----
-
-## 追加機能 (将来実装)
-
-### 街歩きモード
-- 2Dマップでカフェを探索
-- ランダムエンカウント
-
-### ランキングシステム
-- 人気カフェランキング
-- 人気カフェロットランキング
-
-### イベントシステム
-- 期間限定テーマ
-- コラボイベント
-
-### トレード機能
-- カフェロット交換
-- オークション
-
----
-
-## 開発コマンド
-
-### 開発開始
-```bash
-npm run dev
-```
-
-### ビルド
-```bash
-npm run build
-```
-
-### Lint + Format
-```bash
-npm run lint:fix
-npm run format
-```
-
-### WebSocketサーバー起動 (後で実装)
-```bash
-node server/index.js
-```
+### アクセスURL
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8080
+- **API Docs**: http://localhost:8080/docs
+- **WebSocket**: ws://localhost:8080/ws
 
 ---
 
@@ -1125,21 +709,119 @@ node server/index.js
 
 | フェーズ | 期間 | 主要成果物 |
 |---------|------|----------|
-| 1 | Week 1-2 | プロジェクト構造、型定義 |
-| 2 | Week 3-4 | カフェ経営システム |
-| 3 | Week 5-6 | カフェロット作成機能 |
-| 4 | Week 7-8 | コミュニティ機能 |
-| 5 | Week 9-10 | WebSocketリアルタイム |
-| 6 | Week 11-12 | アクション要素、演出 |
-| 7 | Week 13-14 | デプロイ、最適化 |
+| 1 | Week 1-2 | プロジェクト構造、型定義、WebSocket基盤 ✅ |
+| 2 | Week 3-4 | ゲームルールエンジン（Classic RPS, Ido Janken） |
+| 3 | Week 5 | NPC AI実装（ランダムAI） |
+| 4 | Week 6-8 | フロントエンド（ルール選択、ゲーム画面） |
+| 5 | Week 9 | 階段ゲーム実装 |
+| 6 | Week 10-11 | トーナメント機能 |
+| 7 | Week 12 | 国際化対応、多言語 |
+| 8 | Week 13-14 | デプロイ、最適化 |
+
+---
+
+## 将来拡張
+
+### オンライン対戦（P2P / マッチング）
+- WebSocketでリアルタイム対戦
+- マッチングシステム
+- フレンド対戦
+
+### ユーザー投稿ルール
+- コミュニティで新しいじゃんけんルールを追加
+- ルールエディタ（JSON形式で定義）
+
+### ランキングシステム
+- グローバルランキング
+- ルール別ランキング
+- 月間ランキング
+
+### 大将棋モード
+- じゃんけん要素を取り入れた将棋風ゲーム
+- 駒の強さをじゃんけんで決定
+
+---
+
+## 📂 プロジェクトドキュメント
+
+このプロジェクトには、以下の詳細ドキュメントが用意されています（`.claude/`ディレクトリ内）:
+
+- **[TODO.md](.claude/TODO.md)**: タスク一覧と優先順位
+- **[PROGRESS.md](.claude/PROGRESS.md)**: 開発進捗状況の詳細
+- **[DESIGN.md](.claude/DESIGN.md)**: アーキテクチャと設計ドキュメント
+- **[NEXT_STEPS.md](.claude/NEXT_STEPS.md)**: 今後の実装ロードマップ
+
+---
+
+## 現在の実装状況
+
+**全体進捗: 約35%** (2025-11-17更新)
+
+### ✅ 完全実装済み（100%）
+
+#### 基盤構築
+- プロジェクト構造（backend + frontend）
+- Docker Compose環境
+- FastAPI + WebSocket基盤
+- React + TypeScript環境
+- 全ゲームルール対応の型定義
+- WebSocketクライアント（再接続ロジック付き）
+
+#### ゲームルールエンジン
+- ゲームルール基底クラス (`GameRuleBase`)
+- Classic RPS ルールエンジン (`classic_rps.py`)
+- Ido Janken ルールエンジン (`ido_janken.py`)
+- Achi Muite Hoi ルールエンジン (`achi_muite_hoi.py`) - バックエンドのみ
+
+#### NPC AI
+- ランダムAI実装 (`random_ai.py`)
+- 全ルール対応の手選択ロジック
+- 方向選択ロジック（あっちむいてホイ用）
+
+#### フロントエンドUI
+- ルール選択画面 (`RuleSelector.tsx`)
+- ゲーム画面 (`GameBoard.tsx`)
+- 手選択ボタン（3択・4択対応）
+- スコア表示・結果表示
+- リアルタイムWebSocket通信
+
+### 🚧 一部実装済み（50%）
+
+#### Achi Muite Hoi（あっちむいてホイ）
+- ✅ バックエンド: じゃんけん部分のルールエンジン
+- ✅ バックエンド: 方向判定ロジック
+- ❌ フロントエンド: 方向選択UI
+- ❌ フロントエンド: 2段階ゲームフロー
+- ❌ バックエンド: WebSocketメッセージハンドラ統合
+
+### ❌ 未実装（0%）
+
+#### ゲームモード
+- Glico Game（階段ゲーム）
+- Limited Janken（限定じゃんけん）
+- Arcade Coin Janken（メダルゲーム）
+- Tournament（トーナメント）
+- Dai-janken（プログラミングじゃんけん）
+
+#### 機能拡張
+- NPC AI強化（Normal/Hard難易度）
+- アニメーション強化
+- サウンドエフェクト
+- 統計・ランキング
+- 多言語対応
+- テスト実装
 
 ---
 
 ## 次のアクション
 
-1. **型定義ファイルの作成** (`src/types/index.ts`)
-2. **プロジェクト構造の整備** (フォルダ作成)
-3. **基本的なルーティング設定** (React Router)
-4. **カフェビューのプロトタイプ作成**
+### 優先度S（直近1-2週間）
+1. **Achi Muite Hoi完成** - 方向選択UIと2段階ゲームフロー実装
+2. **Glico Game実装** - 階段ゲームのルールエンジンとビジュアル
 
-準備ができたら、具体的な実装を開始しましょう！
+### 優先度A（近日中）
+3. **Limited Janken実装** - 手の回数制限ロジック
+4. **Arcade Coin Janken実装** - コイン増減システム
+5. **UI/UX改善** - サウンドとアニメーション追加
+
+詳細は [NEXT_STEPS.md](.claude/NEXT_STEPS.md) を参照してください。
