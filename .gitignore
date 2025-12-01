@@ -51,3 +51,4 @@ coverage/
 
 # Husky
 .husky/_/
+.claude/settings.local.json
