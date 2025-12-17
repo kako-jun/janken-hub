@@ -53,3 +53,4 @@ coverage/
 .husky/_/
 .claude/settings.local.json
 .serena/
+.mcp.json
