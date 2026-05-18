@@ -1,6 +1,10 @@
 // タイトル画面 (Issue #4)。
 // - 「JankenHub」大タイトル + 「PRESS SPACE / TAP TO START」点滅
 // - Space / Enter / クリック / タップで RuleSelect へ
+//
+// セルフレビュー後追い: 入力エッジ判定を InputEdgeDetector に統一。
+// TitleScene 自体はディレイなしだが、コードパスを揃えると GameScene /
+// ResultScene と同じ "押しっぱなしすり抜け" バグの再発を防げる。
 
 import { Graphics, Text } from 'pixi.js'
 import { Scene } from '../Scene'
@@ -10,6 +14,7 @@ import {
   STAGE_HEIGHT,
   STAGE_WIDTH,
 } from '../constants'
+import { InputEdgeDetector } from '../InputEdgeDetector'
 
 const TITLE_STYLE = {
   fill: 0xffffff,
@@ -32,9 +37,7 @@ const HINT_STYLE = {
 export class TitleScene extends Scene {
   private hint: Text
   private blinkMs = 0
-  private armed = false
-  private spaceDown = false
-  private prevSpaceDown = false
+  private input = new InputEdgeDetector()
 
   constructor() {
     super()
@@ -78,39 +81,38 @@ export class TitleScene extends Scene {
     window.addEventListener('keydown', this.onKeyDown)
     window.addEventListener('keyup', this.onKeyUp)
     window.addEventListener('pointerdown', this.onPointerDown)
-    this.armed = true
   }
 
   override update(deltaMs: number): void {
     this.blinkMs += deltaMs
     this.hint.alpha = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(this.blinkMs / 250))
 
-    // Space は edge トリガで遷移
-    if (this.armed && this.spaceDown && !this.prevSpaceDown) {
+    if (this.input.tick(deltaMs)) {
       this.go()
     }
-    this.prevSpaceDown = this.spaceDown
   }
 
   private onKeyDown = (ev: KeyboardEvent): void => {
     if (ev.code === 'Space' || ev.code === 'Enter') {
-      this.spaceDown = true
+      this.input.setPressed(true)
       ev.preventDefault()
     }
   }
 
   private onKeyUp = (ev: KeyboardEvent): void => {
     if (ev.code === 'Space' || ev.code === 'Enter') {
-      this.spaceDown = false
+      this.input.setPressed(false)
     }
   }
 
   private onPointerDown = (): void => {
-    if (this.armed) this.go()
+    if (this.input.triggerOnce()) {
+      this.go()
+    }
   }
 
   private go(): void {
-    this.armed = false
+    this.input.disarm()
     this.cleanup()
     this.exit({ next: 'rule_select' })
   }

@@ -1,6 +1,9 @@
 // ゲーム画面プレースホルダ (Issue #4)。
 // 選択ルール名を表示するだけ。実際のじゃんけんロジックは #7-#10 で実装。
 // Space / クリックで Result に進む (プレースホルダ用の動線確認だけ)。
+//
+// セルフレビュー後追い: 入力ディレイ中の prevSpaceDown 更新漏れバグを
+// InputEdgeDetector に集約して修正。
 
 import { Graphics, Text } from 'pixi.js'
 import { Scene } from '../Scene'
@@ -10,6 +13,7 @@ import {
   STAGE_HEIGHT,
   STAGE_WIDTH,
 } from '../constants'
+import { InputEdgeDetector } from '../InputEdgeDetector'
 import { GameRuleType, RoundResult } from '../types'
 
 const RULE_LABEL: Record<GameRuleType, string> = {
@@ -33,10 +37,7 @@ const HINT_STYLE = {
 
 export class GameScene extends Scene {
   private rule: GameRuleType
-  private armed = false
-  private spaceDown = false
-  private prevSpaceDown = false
-  private inputDelayMs = 250
+  private input = new InputEdgeDetector({ initialDelayMs: 250 })
 
   constructor(rule: GameRuleType) {
     super()
@@ -77,34 +78,32 @@ export class GameScene extends Scene {
   }
 
   override update(deltaMs: number): void {
-    if (this.inputDelayMs > 0) {
-      this.inputDelayMs -= deltaMs
-      if (this.inputDelayMs <= 0) this.armed = true
-      return
-    }
-    if (this.armed && this.spaceDown && !this.prevSpaceDown) {
+    if (this.input.tick(deltaMs)) {
       this.go()
     }
-    this.prevSpaceDown = this.spaceDown
   }
 
   private onKeyDown = (ev: KeyboardEvent): void => {
     if (ev.code === 'Space' || ev.code === 'Enter') {
-      this.spaceDown = true
+      this.input.setPressed(true)
       ev.preventDefault()
     }
   }
   private onKeyUp = (ev: KeyboardEvent): void => {
-    if (ev.code === 'Space' || ev.code === 'Enter') this.spaceDown = false
+    if (ev.code === 'Space' || ev.code === 'Enter') {
+      this.input.setPressed(false)
+    }
   }
   private onPointerDown = (): void => {
-    if (this.armed) this.go()
+    if (this.input.triggerOnce()) {
+      this.go()
+    }
   }
 
   private go(): void {
     // プレースホルダなので結果は draw 固定。本実装は #7-#10。
     const result: RoundResult = 'draw'
-    this.armed = false
+    this.input.disarm()
     this.cleanup()
     this.exit({ next: 'result', result })
   }

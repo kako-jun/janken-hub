@@ -153,11 +153,20 @@ export class RuleSelectScene extends Scene {
       this.armed = false
       this.exit({ next: 'game', rule: spec.rule })
     })
-    // hover で軽くスケール
+    // DESIGN.md: hover で 1.05, 押下で 0.95 (active:scale-95 相当)
     card.on('pointerover', () => {
       card.scale.set(1.05)
     })
     card.on('pointerout', () => {
+      card.scale.set(1.0)
+    })
+    card.on('pointerdown', () => {
+      card.scale.set(0.95)
+    })
+    card.on('pointerup', () => {
+      card.scale.set(1.05)
+    })
+    card.on('pointerupoutside', () => {
       card.scale.set(1.0)
     })
     return card

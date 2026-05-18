@@ -124,3 +124,7 @@ CSS 側 (`index.html`) で `canvas { max-width: 100vw; max-height: 100vh }`
 - `vitest` で `getContext` 未実装の警告が出る（PixiJS が DOM 上で
   canvas 取得を試みるため）。テストの assertion には影響しない
 - `frontend/` / `backend/` の lint は `eslint.config.js` で `ignores` 済
+- `.github/workflows/deploy.yml` が `./frontend` 配下を build しており、
+  ルートの新構成では GitHub Pages デプロイが効かない。
+  旧構成削除 (`#12`) と同時に `npm ci` / `npm run build` をルートで
+  実行する形に書き換える

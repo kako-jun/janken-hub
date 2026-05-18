@@ -1,5 +1,8 @@
 // 結果画面プレースホルダ (Issue #4)。
 // You Win / You Lose / Draw を色付きで表示し、Space / クリックで Title へ戻る。
+//
+// セルフレビュー後追い: 入力ディレイ中の prevSpaceDown 更新漏れバグを
+// InputEdgeDetector に集約して修正。
 
 import { Graphics, Text } from 'pixi.js'
 import { Scene } from '../Scene'
@@ -12,6 +15,7 @@ import {
   STAGE_HEIGHT,
   STAGE_WIDTH,
 } from '../constants'
+import { InputEdgeDetector } from '../InputEdgeDetector'
 import { RoundResult } from '../types'
 
 const TITLE_STYLE_BASE = {
@@ -39,10 +43,7 @@ const resultMessage = (r: RoundResult): { text: string; color: number } => {
 export class ResultScene extends Scene {
   private hint: Text
   private blinkMs = 0
-  private armed = false
-  private spaceDown = false
-  private prevSpaceDown = false
-  private inputDelayMs = 400
+  private input = new InputEdgeDetector({ initialDelayMs: 400 })
 
   constructor(result: RoundResult) {
     super()
@@ -86,32 +87,30 @@ export class ResultScene extends Scene {
     this.blinkMs += deltaMs
     this.hint.alpha = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(this.blinkMs / 250))
 
-    if (this.inputDelayMs > 0) {
-      this.inputDelayMs -= deltaMs
-      if (this.inputDelayMs <= 0) this.armed = true
-      return
-    }
-    if (this.armed && this.spaceDown && !this.prevSpaceDown) {
+    if (this.input.tick(deltaMs)) {
       this.go()
     }
-    this.prevSpaceDown = this.spaceDown
   }
 
   private onKeyDown = (ev: KeyboardEvent): void => {
     if (ev.code === 'Space' || ev.code === 'Enter') {
-      this.spaceDown = true
+      this.input.setPressed(true)
       ev.preventDefault()
     }
   }
   private onKeyUp = (ev: KeyboardEvent): void => {
-    if (ev.code === 'Space' || ev.code === 'Enter') this.spaceDown = false
+    if (ev.code === 'Space' || ev.code === 'Enter') {
+      this.input.setPressed(false)
+    }
   }
   private onPointerDown = (): void => {
-    if (this.armed) this.go()
+    if (this.input.triggerOnce()) {
+      this.go()
+    }
   }
 
   private go(): void {
-    this.armed = false
+    this.input.disarm()
     this.cleanup()
     this.exit({ next: 'title' })
   }
