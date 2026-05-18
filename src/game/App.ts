@@ -77,19 +77,25 @@ export class App {
     scene.enter()
   }
 
-  private handleExit(param: SceneExitParam): void {
+  // exported for unit tests. シーン側からは呼ばれず、setExitHandler 経由のみ。
+  handleExit(param: SceneExitParam): void {
     switch (param.next) {
       case 'rule_select':
         void this.startRuleSelect()
         break
       case 'game':
-        // rule 未指定なら classic_rps にフォールバック
+        // rule 未指定なら classic_rps にフォールバック (RuleSelectScene が
+        // 必ず rule 付きで exit する規約だが、安全側に default を置く)。
         void this.startGame(param.rule ?? 'classic_rps')
         break
       case 'result':
+        // result 未指定は draw 扱い (GameScene が必ず result 付きで exit する)。
         void this.startResult(param.result ?? 'draw')
         break
       case 'title':
+        // 'title' は default と同じ扱い。明示ケースを残すのは意図の表明。
+        void this.startTitle()
+        break
       default:
         void this.startTitle()
         break
