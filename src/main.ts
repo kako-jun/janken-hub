@@ -30,7 +30,8 @@ const main = async (): Promise<void> => {
 
   setLoadingProgress(0.5)
 
-  new App(pixiApp)
+  const app = new App(pixiApp)
+  await app.startTitle()
 
   setLoadingProgress(1)
   removeLoading()
