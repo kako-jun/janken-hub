@@ -32,10 +32,14 @@ type Phase = 'countdown' | 'reveal' | 'flash' | 'matchEnd'
 const COUNTDOWN_STEP_MS = 500
 /** countdown のテキスト。step 3 ("ポン!") の終端で reveal へ遷移する。 */
 const COUNTDOWN_TEXTS = ['最初はグー', 'ジャン', 'ケン', 'ポン!']
+/** countdown 全 step を表示し終えるまでの合計時間 (ms)。テストからも参照する。 */
+export const COUNTDOWN_TOTAL_MS = COUNTDOWN_STEP_MS * COUNTDOWN_TEXTS.length
 const REVEAL_HOLD_MS = 400
 const FLASH_MS = 600
 const MATCH_END_MS = 1000
 const BEST_OF_WINS = 2 // 先取 2 勝 = best-of-3
+/** best-of-3 の最大ラウンド数。ROUND ヘッダ表示に使う (= 3)。 */
+const BEST_OF_MAX_ROUNDS = BEST_OF_WINS * 2 - 1
 
 const HAND_ICON: Record<Hand, string> = {
   rock: '✊',
@@ -86,16 +90,36 @@ const BUTTON_STYLE = {
 const BUTTON_RADIUS = 50
 const BUTTON_Y = STAGE_HEIGHT - 90
 
-/** UI ボタン情報。順序は ✊ ✌ ✋ で select1/2/3 に対応。 */
+/**
+ * UI ボタン情報。並び順は左→右で ✊ ✌ ✋ (rock / scissors / paper)。
+ * 物理キー 1/2/3 (select1/2/3) との対応は意図的にこの順序: ✊=1, ✌=2, ✋=3。
+ * グー → チョキ → パー の典型的なジャンケン表記に合わせている。
+ */
 const BUTTONS: { hand: Hand; x: number }[] = [
   { hand: 'rock', x: STAGE_WIDTH / 2 - 140 },
   { hand: 'scissors', x: STAGE_WIDTH / 2 },
   { hand: 'paper', x: STAGE_WIDTH / 2 + 140 },
 ]
 
+/**
+ * ボタン円の見た目を描画する共通ヘルパ。selected の場合は塗り alpha と
+ * stroke 幅を強調する。setPlayerHand / resetForNextRound から呼ぶ。
+ */
+const drawButton = (g: Graphics, selected: boolean): void => {
+  g.clear()
+  g.circle(0, 0, BUTTON_RADIUS)
+    .fill({ color: 0xffffff, alpha: selected ? 0.4 : 0.18 })
+    .stroke({ color: 0xffffff, width: selected ? 4 : 2 })
+}
+
 export interface ClassicRpsSceneOptions {
   /** AI の乱数源。テストで決定論的に差し替え可能。 */
   random?: AIRandomSource
+  /**
+   * NpcAI を直接注入する (テスト用)。指定された場合は createAIFromCharacter
+   * を呼ばずこれを使用するため、AI の chooseHand を完全に決定論化できる。
+   */
+  ai?: NpcAI
   /** 強制的に使うキャラクター (テスト用)。未指定なら random で選択。 */
   character?: NpcCharacter
   /** InputManager の addEventListener 対象 (テストで window 以外に貼る用)。 */
@@ -148,13 +172,17 @@ export class ClassicRpsScene extends Scene {
     this.inputTarget = opts.inputTarget ?? window
 
     // キャラクター選択 (forced → random)。
+    // TODO(future): キャラ選択用 random と AI 内部 random は別ソースに分けると
+    // テスト時に「キャラは固定したいが AI の乱数だけ動かしたい」ケースに対応しやすい。
+    // 現状は同じ random を使い回しても opts.character 指定で回避できるため no-op。
     if (opts.character) {
       this.character = opts.character
     } else {
       const idx = Math.floor(this.random.next() * NPC_CHARACTERS.length)
       this.character = NPC_CHARACTERS[Math.min(idx, NPC_CHARACTERS.length - 1)]
     }
-    this.ai = createAIFromCharacter(this.character, this.random)
+    // AI は直接注入されたものを優先 (テスト決定論化用)。
+    this.ai = opts.ai ?? createAIFromCharacter(this.character, this.random)
 
     this.buildUi()
   }
@@ -185,7 +213,7 @@ export class ClassicRpsScene extends Scene {
 
     // 上部中央: ROUND
     this.roundText = new Text({
-      text: `ROUND ${this.round} / 3`,
+      text: `ROUND ${this.round} / ${BEST_OF_MAX_ROUNDS}`,
       style: HEADER_STYLE,
     })
     this.roundText.anchor.set(0.5, 0)
@@ -296,6 +324,8 @@ export class ClassicRpsScene extends Scene {
   // ---------- input ----------
 
   private handleAction = (action: InputAction): void => {
+    // countdown 以外 (reveal/flash/matchEnd) でのキー入力は意図的に no-op。
+    // matchEnd 中の入力は exit までのアニメ待ちなのでスキップして良い。
     if (this.phase !== 'countdown') return
     switch (action) {
       case 'select1':
@@ -314,6 +344,7 @@ export class ClassicRpsScene extends Scene {
   }
 
   private handlePointer = (ev: InputPointerEvent): void => {
+    // countdown 以外でのポインタ入力も意図的に no-op (上記 handleAction 同様)。
     if (this.phase !== 'countdown') return
     // ボタン円との距離判定。最も近いボタン半径内なら確定。
     for (const b of BUTTONS) {
@@ -330,12 +361,7 @@ export class ClassicRpsScene extends Scene {
     this.playerHand = hand
     // ボタンハイライトを更新。
     for (let i = 0; i < BUTTONS.length; i++) {
-      const isSelected = BUTTONS[i].hand === hand
-      const g = this.buttonGraphics[i]
-      g.clear()
-      g.circle(0, 0, BUTTON_RADIUS)
-        .fill({ color: 0xffffff, alpha: isSelected ? 0.4 : 0.18 })
-        .stroke({ color: 0xffffff, width: isSelected ? 4 : 2 })
+      drawButton(this.buttonGraphics[i], BUTTONS[i].hand === hand)
     }
   }
 
@@ -354,7 +380,7 @@ export class ClassicRpsScene extends Scene {
       }
     }
     // 全 step (0,1,2,3) を表示し終えたら reveal へ。
-    if (this.elapsed >= COUNTDOWN_STEP_MS * COUNTDOWN_TEXTS.length) {
+    if (this.elapsed >= COUNTDOWN_TOTAL_MS) {
       this.enterReveal()
     }
   }
@@ -368,9 +394,14 @@ export class ClassicRpsScene extends Scene {
     }
     // NPC の手を決定。
     const npcMove = this.ai.chooseHand('classic_rps')
-    // classic_rps では NPC AI は Hand のみを返すが、IdoHand 型でも返り得るため
-    // 'well' が来た場合は rock にフォールバック (現状の RandomAI/WeightedAI は
-    // 'well' を返さない実装だが、念のためのガード)。
+    // classic_rps では NPC AI は Hand のみを返すべきだが、IdoHand 型でも返り得る。
+    // 'well' が来た場合は契約違反として警告を出した上で rock にフォールバック。
+    // (現状の RandomAI/WeightedAI は 'well' を返さない実装だが、念のためのガード)。
+    if (npcMove === 'well') {
+      console.warn(
+        '[ClassicRpsScene] NPC returned well for classic_rps; falling back to rock'
+      )
+    }
     this.npcHand = npcMove === 'well' ? 'rock' : (npcMove as Hand)
 
     this.lastResult = judgeClassicRps(this.playerHand, this.npcHand)
@@ -428,7 +459,7 @@ export class ClassicRpsScene extends Scene {
 
     // 次のラウンドへ。
     this.round++
-    this.roundText.text = `ROUND ${this.round} / 3`
+    this.roundText.text = `ROUND ${this.round} / ${BEST_OF_MAX_ROUNDS}`
     this.resetForNextRound()
   }
 
@@ -445,12 +476,8 @@ export class ClassicRpsScene extends Scene {
     this.npcHandText.visible = false
     this.characterDisplay?.setHand(undefined)
     // ボタンハイライト解除
-    for (let i = 0; i < this.buttonGraphics.length; i++) {
-      const g = this.buttonGraphics[i]
-      g.clear()
-      g.circle(0, 0, BUTTON_RADIUS)
-        .fill({ color: 0xffffff, alpha: 0.18 })
-        .stroke({ color: 0xffffff, width: 2 })
+    for (const g of this.buttonGraphics) {
+      drawButton(g, false)
     }
   }
 
@@ -464,24 +491,34 @@ export class ClassicRpsScene extends Scene {
       fill: win ? COLOR_WIN : COLOR_LOSE,
     }
     this.matchEndText.visible = true
-    this.playerHandText.visible = false
-    this.npcHandText.visible = false
+    // playerHandText / npcHandText は意図的に残して、最後に出した手を
+    // matchEnd メッセージと並べて見せる (リプレイ感が出る)。
     this.countdownText.visible = false
   }
 
   private tickMatchEnd(): void {
     if (this.elapsed >= MATCH_END_MS) {
-      const result: RoundResult = this.score.p1 >= BEST_OF_WINS ? 'win' : 'lose'
-      // 入力を即切ってから exit (handleExit 中に新規 listener が走らないように)
-      this.input?.dispose()
-      this.input = null
+      // draw 戻りは score.p1/p2 のどちらかが BEST_OF_WINS に達して
+      // enterMatchEnd に入った時点で論理的に起き得ないが、両側を明示する
+      // ことで「どちらにも達していない (= ガード抜け)」を draw に倒す。
+      const result: RoundResult =
+        this.score.p1 >= BEST_OF_WINS
+          ? 'win'
+          : this.score.p2 >= BEST_OF_WINS
+            ? 'lose'
+            : 'draw'
+      // input.dispose は destroyScene で一元化。tickMatchEnd では呼ばない。
       this.exit({ next: 'result', result })
     }
   }
 
   // ---------- test helper ----------
 
-  /** テストから内部 state を読むための公開フック。 */
+  /**
+   * テストから内部 state を読むための公開フック。
+   * 本番コードからは呼ばないこと。
+   * @internal
+   */
   getDebugSnapshot(): DebugSnapshot {
     return {
       phase: this.phase,

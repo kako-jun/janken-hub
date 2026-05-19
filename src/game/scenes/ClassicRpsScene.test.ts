@@ -7,10 +7,10 @@
 // 内部 state は getDebugSnapshot() 経由で読む。
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ClassicRpsScene } from './ClassicRpsScene'
+import { ClassicRpsScene, COUNTDOWN_TOTAL_MS } from './ClassicRpsScene'
 import type { SceneExitParam } from '../Scene'
 import { NPC_CHARACTERS } from '../npc'
-import type { AIRandomSource } from '../npc'
+import type { AIRandomSource, NpcAI } from '../npc'
 
 /** 固定値を返す乱数源。NPC_CHARACTERS[0] (julius=scissors) を選ばせる用。 */
 const fixedRandom = (value: number): AIRandomSource => ({
@@ -68,8 +68,8 @@ describe('ClassicRpsScene (Issue #7)', () => {
     // プレイヤーは rock を選ぶ
     dispatchKey('1')
 
-    // countdown は 4 step × 500ms = 2000ms
-    scene.update(2100)
+    // countdown は 4 step × 500ms = COUNTDOWN_TOTAL_MS (2000ms)
+    scene.update(COUNTDOWN_TOTAL_MS + 100)
 
     const s = scene.getDebugSnapshot()
     expect(s.phase).toBe('reveal')
@@ -86,7 +86,7 @@ describe('ClassicRpsScene (Issue #7)', () => {
     })
     scene.enter()
     // 入力せず countdown 完了
-    scene.update(2100)
+    scene.update(COUNTDOWN_TOTAL_MS + 100)
     const s = scene.getDebugSnapshot()
     expect(s.phase).toBe('reveal')
     expect(s.playerHand).toBeDefined()
@@ -105,7 +105,7 @@ describe('ClassicRpsScene (Issue #7)', () => {
     })
     scene.enter()
     dispatchKey('1') // rock
-    scene.update(2100) // countdown → reveal
+    scene.update(COUNTDOWN_TOTAL_MS + 100) // countdown → reveal
     scene.update(500) // reveal → flash
     scene.update(700) // flash → next or matchEnd
 
@@ -119,39 +119,50 @@ describe('ClassicRpsScene (Issue #7)', () => {
     scene.destroyScene()
   })
 
-  it('先取 2 勝で matchEnd → 1000ms 後に exit({next:result, result:win})', () => {
+  it('先取 2 勝で matchEnd → 1000ms 後に exit({next:result, result:win}) [決定論]', () => {
+    // 固定 AI で常に scissors を返させる。プレイヤーは rock を選ぶ → 2 連勝で
+    // matchEnd を必ず通過するため、if 分岐ガード無しで exit を検証できる。
+    const fixedAi: NpcAI = {
+      difficulty: 'easy',
+      chooseHand: () => 'scissors',
+      chooseDirection: () => 'up',
+    }
     const scene = new ClassicRpsScene({
       random: fixedRandom(0.5),
       character: NPC_CHARACTERS[0],
+      ai: fixedAi,
     })
     scene.enter()
     // exit ハンドラ登録
     const exitParams: SceneExitParam[] = []
     scene.setExitHandler(p => exitParams.push(p))
 
-    // 内部 score を直接書き換えて matchEnd に到達させる
-    // (private アクセス。テスト目的なのでキャストで突破)。
-    type Internal = { score: { p1: number; p2: number } }
-    const internal = scene as unknown as Internal
-    internal.score.p1 = 1
-
-    // round を進める: rock 入力 → countdown 完了 → reveal → flash → afterFlash
+    // ラウンド 1: rock vs scissors → win
     dispatchKey('1')
-    scene.update(2100) // countdown → reveal
+    scene.update(COUNTDOWN_TOTAL_MS + 100) // countdown → reveal
     scene.update(500) // reveal → flash
-    scene.update(700) // flash → afterFlash
+    scene.update(700) // flash → afterFlash (score 1-0, round 2 へ)
 
-    // afterFlash で score が更新される。p1=1 開始だったので
-    // win なら 2 で matchEnd, lose なら p2=1, draw なら 1-0 のまま継続。
-    // 結果は決定論的でない (random=0.5 固定でも RandomAI の選択次第) ので、
-    // matchEnd に到達したケースだけ exit 検証する。
-    const s = scene.getDebugSnapshot()
-    if (s.phase === 'matchEnd') {
-      scene.update(1100)
-      expect(exitParams).toHaveLength(1)
-      expect(exitParams[0].next).toBe('result')
-      expect(['win', 'lose']).toContain(exitParams[0].result)
-    }
+    expect(scene.getDebugSnapshot().score).toEqual({ p1: 1, p2: 0 })
+    expect(scene.getDebugSnapshot().phase).toBe('countdown')
+    expect(scene.getDebugSnapshot().round).toBe(2)
+
+    // ラウンド 2: rock vs scissors → win → matchEnd
+    dispatchKey('1')
+    scene.update(COUNTDOWN_TOTAL_MS + 100) // countdown → reveal
+    scene.update(500) // reveal → flash
+    scene.update(700) // flash → afterFlash → enterMatchEnd
+
+    const sMatch = scene.getDebugSnapshot()
+    expect(sMatch.phase).toBe('matchEnd')
+    expect(sMatch.score).toEqual({ p1: 2, p2: 0 })
+
+    // 1000ms 経過で exit
+    scene.update(1100)
+    expect(exitParams).toHaveLength(1)
+    expect(exitParams[0].next).toBe('result')
+    expect(exitParams[0].result).toBe('win')
+
     scene.destroyScene()
   })
 
