@@ -48,8 +48,22 @@ export class App {
     if (this.isTransitioning) return
     this.isTransitioning = true
     try {
-      const { GameScene } = await import('./scenes/GameScene')
-      this.replaceScene(new GameScene(rule))
+      // rule ごとに専用シーンへ dispatch。未実装ルール (#8-#10) は GameScene
+      // プレースホルダのまま残し、後続 Issue で順次置き換える。
+      switch (rule) {
+        case 'classic_rps': {
+          const { ClassicRpsScene } = await import('./scenes/ClassicRpsScene')
+          this.replaceScene(new ClassicRpsScene())
+          break
+        }
+        case 'ido_janken':
+        case 'achi_muite_hoi':
+        case 'glico': {
+          const { GameScene } = await import('./scenes/GameScene')
+          this.replaceScene(new GameScene(rule))
+          break
+        }
+      }
     } finally {
       this.isTransitioning = false
     }
