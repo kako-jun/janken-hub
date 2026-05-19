@@ -62,7 +62,7 @@ janken-hub/
 | #6    | NPC AI とキャラクター表示 (Easy/Normal/Hard 難易度)                                         | 完了 (#18) |
 | #7    | Classic RPS シーン本実装 (3 手じゃんけん + 結果アニメ + 勝敗判定)                           | 完了 (#19) |
 | #8    | Ido Janken シーン (4 手・井戸ルール)                                                        | 実装中     |
-| #9    | Achi Muite Hoi シーン (じゃんけん → 方向選択 2 段階フロー)                                  | 未着手     |
+| #9    | Achi Muite Hoi シーン (じゃんけん → 方向選択 2 段階フロー)                                  | 実装中     |
 | #10   | Glico Game シーン (階段ゲーム)                                                              | 未着手     |
 | #11   | LocalStorage 戦績保存 + 結果アニメ・SE                                                      | 未着手     |
 | #12   | 旧 React/Tailwind/backend 削除 + README/CLAUDE/DESIGN/architecture を PixiJS 構成に書き換え | 未着手     |
