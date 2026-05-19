@@ -28,9 +28,12 @@ export class MemoryAI implements NpcAI {
     this.fallback = new RandomAI(random)
   }
 
+  /**
+   * 現在は履歴を引数で受ける純粋ロジックなので内部状態は持たない。
+   * 将来 MemoryAI 自体に統計 (例: 相手手の累積分布) を持たせる場合の hook として残す。
+   */
   reset(): void {
-    // 履歴は呼び出し側から渡る設計なので内部状態は持たない。
-    // 将来内部統計を持たせる場合の hook として残す。
+    // intentionally empty; see JSDoc above.
   }
 
   chooseHand(
@@ -42,7 +45,9 @@ export class MemoryAI implements NpcAI {
       .map(m => m.hand)
       .filter((h): h is Hand | IdoHand => Boolean(h))
 
-    if (recent.length === 0) return this.fallback.chooseHand(rule)
+    // 履歴が MEMORY_WINDOW 未満ならサンプルが薄いので RandomAI に委譲する
+    // (1〜4 件で読みを決め打ちするとブレが大きく Hard らしさが出ない)
+    if (recent.length < MEMORY_WINDOW) return this.fallback.chooseHand(rule)
 
     const counts = new Map<Hand | IdoHand, number>()
     for (const h of recent) counts.set(h, (counts.get(h) ?? 0) + 1)
@@ -58,12 +63,9 @@ export class MemoryAI implements NpcAI {
     }
     if (!topHand) return this.fallback.chooseHand(rule)
 
-    const counter = COUNTER[topHand]
-    // classic_rps では well は出せないので fall back
-    if (rule !== 'ido_janken' && counter === 'well') {
-      return this.fallback.chooseHand(rule)
-    }
-    return counter
+    // COUNTER テーブルの値域は rock/paper/scissors のみで well は出てこないため、
+    // classic_rps でも追加 fallback は不要 (相手 well 連発でも返すのは paper)。
+    return COUNTER[topHand]
   }
 
   chooseDirection(opponentHistory?: OpponentMove[]): Direction {

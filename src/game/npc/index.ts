@@ -6,8 +6,11 @@ import type { NpcDifficulty } from '../types'
 import { MemoryAI } from './MemoryAI'
 import { RandomAI } from './RandomAI'
 import { WeightedAI } from './WeightedAI'
-import type { AIRandomSource, NpcAI } from './types'
+import type { AIRandomSource, NpcAI, NpcCharacter } from './types'
 
+// 注意: ここで export している `./types` は NPC AI 専用の型 (AIRandomSource / OpponentMove
+// / NpcAI / NpcCharacter 等) であり、`../types` (GameState / Hand / Direction など
+// game 全体共有の型) とは別物。シーン側は両方を別 import する必要がある。
 export * from './types'
 export * from './characters'
 export { RandomAI } from './RandomAI'
@@ -28,3 +31,18 @@ export const createAI = (
       return new MemoryAI(opts?.random)
   }
 }
+
+/**
+ * NpcCharacter から AI インスタンスを直接組み立てるヘルパ。
+ * `createAI(c.recommendedDifficulty, { affinity: c.affinity, random })` の薄いラッパー。
+ * シーン側で `const ai = createAIFromCharacter(character)` と書けば、
+ * 推奨難易度 + affinity の組を毎回手で取り出さずに済む。
+ */
+export const createAIFromCharacter = (
+  character: NpcCharacter,
+  random?: AIRandomSource
+): NpcAI =>
+  createAI(character.recommendedDifficulty, {
+    affinity: character.affinity,
+    random,
+  })

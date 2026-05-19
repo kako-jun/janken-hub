@@ -25,6 +25,24 @@ describe('MemoryAI', () => {
       expect(ai.chooseHand('classic_rps')).toBe('rock')
     })
 
+    it('履歴 1 件 (< MEMORY_WINDOW) → RandomAI と同じ結果 (r=0.5 で paper)', () => {
+      // RandomAI: floor(0.5 * 3) = 1 → HANDS_3[1] = 'paper'
+      const ai = new MemoryAI(fixed([0.5]))
+      expect(ai.chooseHand('classic_rps', [{ hand: 'rock' }])).toBe('paper')
+    })
+
+    it('履歴 4 件 (< MEMORY_WINDOW) でも RandomAI に委譲 (paper 連打でも読まない)', () => {
+      // 真面目に読めば paper → scissors が返るはずだが、サンプルが薄いので fall back
+      const ai = new MemoryAI(fixed([0.5]))
+      const history: OpponentMove[] = [
+        { hand: 'paper' },
+        { hand: 'paper' },
+        { hand: 'paper' },
+        { hand: 'paper' },
+      ]
+      expect(ai.chooseHand('classic_rps', history)).toBe('paper')
+    })
+
     it('[rock,rock,rock,rock,rock] → paper を返す', () => {
       const history: OpponentMove[] = [
         { hand: 'rock' },
@@ -67,20 +85,24 @@ describe('MemoryAI', () => {
         { hand: 'well' },
         { hand: 'well' },
         { hand: 'well' },
+        { hand: 'well' },
+        { hand: 'well' },
       ]
       expect(new MemoryAI().chooseHand('ido_janken', history)).toBe('paper')
     })
 
-    it('classic_rps で COUNTER が well になるケースは fall back', () => {
-      // classic_rps では well は出ないので、相手履歴に well が混じってもそのまま COUNTER=paper
-      // (well 自体が classic では発生しないが、防御テストとして history に well を入れる)
+    it('opponent が well を連発した場合のカウンター手 (COUNTER["well"]="paper")', () => {
+      // ido_janken で相手が well を 5 連発したとき、最頻 well → COUNTER["well"] = "paper"。
+      // classic_rps では well 自体が発生しないが、テーブルの値域には well が含まれないので
+      // 追加の fall back は不要 (常に rock/paper/scissors が返る)。
       const history: OpponentMove[] = [
         { hand: 'well' },
         { hand: 'well' },
         { hand: 'well' },
+        { hand: 'well' },
+        { hand: 'well' },
       ]
-      // 最頻 well → COUNTER=paper → classic_rps では well ではないので OK
-      expect(new MemoryAI().chooseHand('classic_rps', history)).toBe('paper')
+      expect(new MemoryAI().chooseHand('ido_janken', history)).toBe('paper')
     })
   })
 

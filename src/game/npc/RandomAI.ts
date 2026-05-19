@@ -20,7 +20,6 @@ export class RandomAI implements NpcAI {
     rule: GameRuleType,
     _opponentHistory?: OpponentMove[]
   ): Hand | IdoHand {
-    void _opponentHistory
     if (rule === 'ido_janken') {
       const idx = Math.floor(this.random.next() * HANDS_4.length)
       return HANDS_4[Math.min(idx, HANDS_4.length - 1)]
@@ -30,7 +29,6 @@ export class RandomAI implements NpcAI {
   }
 
   chooseDirection(_opponentHistory?: OpponentMove[]): Direction {
-    void _opponentHistory
     const idx = Math.floor(this.random.next() * DIRS.length)
     return DIRS[Math.min(idx, DIRS.length - 1)]
   }

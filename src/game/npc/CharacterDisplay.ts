@@ -3,13 +3,14 @@
 // 「出した手」を右肩に小さく表示できるようにする。シーン側は addChild するだけでよい。
 
 import { Container, Graphics, Text } from 'pixi.js'
+import type { DestroyOptions } from 'pixi.js'
 import type { Hand, IdoHand } from '../types'
 import type { NpcCharacter } from './types'
 
 const HAND_ICON: Record<Hand | IdoHand, string> = {
   rock: '✊',
   paper: '✋',
-  scissors: '✌',
+  scissors: '✂',
   well: '🌀',
 }
 
@@ -73,5 +74,13 @@ export class CharacterDisplay extends Container {
 
   getCharacter(): NpcCharacter {
     return this.character
+  }
+
+  /**
+   * デフォルトで子 (circle / iconText / nameText / handText) も破棄する。
+   * 呼び出し側が options を渡さなかった場合のリーク防止。
+   */
+  override destroy(options?: DestroyOptions): void {
+    super.destroy(options ?? { children: true })
   }
 }
