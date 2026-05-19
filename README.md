@@ -1,178 +1,84 @@
 # Janken Hub (じゃんけんハブ)
 
-> リアルタイムじゃんけん対戦プラットフォーム
+> 世界のじゃんけんを集めた対戦ハブ
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18.3-blue)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Vite-6.0-purple)](https://vitejs.dev/)
+[![PixiJS](https://img.shields.io/badge/PixiJS-8-ff66aa)](https://pixijs.com/)
+[![Vite](https://img.shields.io/badge/Vite-6-646cff)](https://vitejs.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6)](https://www.typescriptlang.org/)
 
-## 🎮 コンセプト
+🌐 https://janken-hub.llll-ll.com
 
-**じゃんけんハブ**は、WebSocketによるリアルタイム通信を活用したじゃんけん対戦プラットフォームです。
+## コンセプト
 
-### 主な特徴
+各国・各地域のじゃんけん文化を 1 枚のキャンバスに集約した、フロント完結のオフライン対戦ハブ。
+NPC との対戦で各ルールを楽しめる。サーバなし・LocalStorage で完結。
 
-- 🌐 **リアルタイム対戦**: WebSocketによる常時接続
-- 🏆 **マッチングシステム**: 自動または友達対戦
-- 📊 **統計・ランキング**: 戦績管理と順位表示
-- ⚡ **高速レスポンス**: FastAPI + Reactで快適な操作感
+## 実装済みルール
 
-## 🚀 技術スタック
+| ルール         | 説明                             |
+| -------------- | -------------------------------- |
+| Classic RPS    | 通常じゃんけん（best-of-3）      |
+| Ido Janken     | 井戸じゃんけん（4 手）           |
+| Achi Muite Hoi | あっちむいてホイ（2 段階フロー） |
+| Glico          | 階段じゃんけん **(WIP)**         |
 
-- **フロントエンド**: React 18 + TypeScript 5.7 + Vite 6
-- **スタイリング**: Tailwind CSS 4
-- **レイアウト**: Flexbox + Absolute Positioning
-- **アニメーション**: Framer Motion
-- **バックエンド**: FastAPI + Python 3.11+
-- **リアルタイム通信**: WebSocket
-- **パッケージ管理**: uv (Backend) / npm (Frontend)
-- **開発環境**: Docker Compose
-- **コード品質**: ESLint + Prettier + Husky
+## 技術スタック
 
-## 📦 セットアップ
+- **PixiJS v8** — WebGL/WebGPU レンダリング
+- **Vite 6** — dev サーバ & ビルド
+- **TypeScript 5** — strict mode
+- **Vitest 4** — ユニットテスト（jsdom）
 
-### 前提条件
+サーバなし、フロント完結。
 
-- Docker & Docker Compose（推奨）
-- または:
-  - Python 3.11+ & uv
-  - Node.js 20+
-
-### インストール（Docker使用）
+## 開発
 
 ```bash
-# リポジトリのクローン
-git clone https://github.com/kako-jun/janken-hub.git
-cd janken-hub
-
-# Docker Composeで全サービス起動
-docker compose up
-```
-
-### ローカル開発（Dockerなし）
-
-```bash
-# Backend
-cd backend
-uv sync
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-uvicorn app.main:app --reload --port 8080
-
-# Frontend（別ターミナル）
-cd frontend
 npm install
-npm run dev
-```
-
-### アクセスURL
-
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8080
-- **API Docs**: http://localhost:8080/docs（FastAPI自動生成）
-- **WebSocket**: ws://localhost:8080/ws
-
-## 🛠️ 開発コマンド
-
-### Docker Compose
-
-```bash
-# 全サービス起動
-docker compose up
-
-# バックグラウンド起動
-docker compose up -d
-
-# ログ確認
-docker compose logs -f
-
-# 停止
-docker compose down
-```
-
-### Frontend
-
-```bash
-cd frontend
-
-# 開発サーバー起動
-npm run dev
-
-# ビルド
+npm run dev          # http://localhost:3000
 npm run build
-
-# プレビュー
-npm run preview
-
-# Lint
+npm run preview      # ビルド成果物をローカルで確認
+npm test             # vitest
 npm run lint
-npm run lint:fix
-
-# フォーマット
-npm run format
-npm run format:check
+npm run typecheck
 ```
 
-### Backend
+Node.js 22 以上。
 
-```bash
-cd backend
-
-# 開発サーバー起動
-uvicorn app.main:app --reload --port 8080
-
-# テスト
-uv run pytest
-
-# 型チェック
-uv run mypy app
-```
-
-## 📁 プロジェクト構造
+## プロジェクト構造
 
 ```
 janken-hub/
-├── backend/                   # FastAPI バックエンド
-│   ├── app/
-│   │   ├── main.py           # FastAPI エントリーポイント
-│   │   ├── models.py         # Pydantic モデル
-│   │   └── websocket.py      # WebSocket管理
-│   ├── Dockerfile
-│   └── pyproject.toml        # uv 依存関係
-├── frontend/                  # React + Vite フロントエンド
-│   ├── src/
-│   │   ├── components/
-│   │   ├── services/
-│   │   └── types/
-│   ├── Dockerfile.dev
-│   └── package.json
-├── compose.yaml              # Docker Compose設定
-├── CLAUDE.md                 # 全体実装計画
-└── README.md                 # このファイル
+├── index.html              # PixiJS 用エントリ HTML
+├── src/
+│   ├── main.ts             # Application 初期化
+│   └── game/
+│       ├── App.ts          # シーン切替コントローラ
+│       ├── Scene.ts        # 基底クラス（enter/exit/update/destroyScene）
+│       ├── constants.ts    # ステージ/カラー定数
+│       ├── state.ts        # GameState ファクトリ
+│       ├── types.ts        # Hand / GameState / RuleState など
+│       ├── input.ts        # 入力統合 (キー/タップ/マウス)
+│       ├── InputEdgeDetector.ts  # 押しっぱなしすり抜け防止
+│       ├── scenes/         # TitleScene / RuleSelectScene / 各 GameScene / ResultScene
+│       ├── rules/          # ルール判定純粋関数
+│       └── npc/            # NPC AI（Random / Memory / Weighted）+ キャラクター
+├── docs/                   # 設計メモ
+├── CLAUDE.md               # 開発エージェント向けガイド
+├── DESIGN.md               # ビジュアル設計指針
+└── vite.config.ts
 ```
 
-## 🎯 開発ロードマップ
+## 設計ドキュメント
 
-詳細な実装計画は [CLAUDE.md](./CLAUDE.md) を参照してください。
+- [CLAUDE.md](./CLAUDE.md) — アーキテクチャと開発規約
+- [DESIGN.md](./DESIGN.md) — ビジュアル設計（カラー・タイポ・レイアウト）
 
-## 🤝 コントリビューション
+## ライセンス
 
-現在、このプロジェクトは初期開発段階です。コントリビューションガイドラインは後日追加予定です。
+MIT License — [LICENSE](LICENSE) 参照。
 
-## 📄 ライセンス
+## 作者
 
-MIT License - 詳細は [LICENSE](LICENSE) を参照してください。
-
-## 👤 作者
-
-**kako-jun**
-
-- GitHub: [@kako-jun](https://github.com/kako-jun)
-
-## 📝 現在の状態
-
-⚠️ **開発初期段階**: 基本的なReact + Vite環境のセットアップが完了しています。ゲーム機能は未実装です。
-
----
-
-**🚧 This project is currently under active development 🚧**
+[@kako-jun](https://github.com/kako-jun)

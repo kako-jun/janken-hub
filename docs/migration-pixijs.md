@@ -117,14 +117,28 @@ ResultScene が `RoundResult` から色を選ぶ。
 CSS 側 (`index.html`) で `canvas { max-width: 100vw; max-height: 100vh }`
 にして縮小表示。`resize()` フックは将来のレスポンシブ調整用に空 override で持つ。
 
-## 既知の TODO（次に拾うもの）
+## 移植完了後の状態
 
-- `App.ts` から `Scene` への `resize()` 呼び出しは未配線（`window.resize`
-  イベントを App が拾ってシーンに伝える経路は `#7` 以降で追加する）
-- `vitest` で `getContext` 未実装の警告が出る（PixiJS が DOM 上で
-  canvas 取得を試みるため）。テストの assertion には影響しない
-- `frontend/` / `backend/` の lint は `eslint.config.js` で `ignores` 済
-- `.github/workflows/deploy.yml` が `./frontend` 配下を build しており、
-  ルートの新構成では GitHub Pages デプロイが効かない。
-  旧構成削除 (`#12`) と同時に `npm ci` / `npm run build` をルートで
-  実行する形に書き換える
+`#12` (2026-05-20 完了) で:
+
+- `frontend/` / `backend/` / `compose.yaml` / `docs/architecture.md` を削除
+- `eslint.config.js` の `ignores` から `frontend` / `backend` を削除
+- `.github/workflows/deploy.yml` をルートビルドに修正
+- `CLAUDE.md` / `README.md` / `DESIGN.md` を PixiJS 構成に書き直し
+
+本ファイルは移植経緯の歴史ドキュメントとして残してある。
+現状アーキテクチャは [CLAUDE.md](../CLAUDE.md) を参照。
+
+### 移植中に発見した落とし穴（再発防止用メモ）
+
+- **PixiJS v8 の pipe 事前登録**: `Text` / `Graphics` の renderPipe は
+  各クラスの side-effect import で登録される。`Application.init()` は
+  登録済み pipe を 1 度だけスナップショットするため、Scene の dynamic
+  import 越しに Text/Graphics を引っ張る構成だと本番ビルドだけで
+  「Cannot read properties of undefined (reading 'updateRenderable')」
+  が出る。`main.ts` で `import 'pixi.js/text'` / `'pixi.js/graphics'` を
+  side-effect import して事前登録させる
+- **canvas のアスペクト比**: `autoDensity: true` が inline style に
+  寸法を書き込むため、`max-width: 100vw / max-height: 100vh` だけだと
+  スマホで縦伸びする。`width: auto !important` + `aspect-ratio: 800/600`
+  で打ち消す

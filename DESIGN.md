@@ -1,204 +1,229 @@
 # DESIGN.md
 
-Janken Hub — Design System
+Janken Hub — Design System (PixiJS 版)
 
-## 1. Visual Theme & Atmosphere
+> Tailwind 時代のカラー語彙はそのままに、PixiJS の `Graphics` / `Text` で
+> 再構築している。本ドキュメントは「PixiJS で UI を組み立てるエージェント
+> が参照する仕様書」を意図して、Tailwind クラスではなく **hex 値と
+> PixiJS のスタイル指定** に揃えてある。
 
-Vibrant arcade game aesthetic. Bold blue-to-purple gradients fill the background while white cards float above with generous shadows. Emoji-heavy UI makes the game instantly approachable — you see a fist, scissors, and hand before reading any text. The design feels like a polished mobile game lobby.
+## 1. ビジュアルテーマ
 
-Inspirations: mobile game UIs, arcade cabinets, party game apps.
+賑やかなアーケードゲーム調。背景は青→紫のグラデで埋め、白いカードが影付きで
+浮かぶ。絵文字を大胆に使い、テキストを読まなくても「グー / チョキ / パー」が
+わかる UI。雰囲気はモバイルゲームのロビーや、お祭りの一画にあるアミューズメント。
 
-## 2. Color Palette & Roles
+インスピレーション: モバイルゲームのロビー、アーケード筐体、パーティゲーム。
 
-Tailwind CSS utility classes. No custom CSS variables.
+## 2. カラーパレット
 
-| Role              | Tailwind Class                  | Hex Approximation | Usage                     |
-| ----------------- | ------------------------------- | ----------------- | ------------------------- |
-| Background        | `from-blue-500 to-purple-600`   | `#3b82f6 → #9333ea` | Page gradient background |
-| Card surface      | `bg-white`                      | `#ffffff`          | Game cards, panels        |
-| Primary text      | `text-gray-800`                 | `#1f2937`          | Body text on white cards  |
-| Secondary text    | `text-gray-600`                 | `#4b5563`          | Descriptions, hints       |
-| Win               | `text-green-500`                | `#22c55e`          | Victory state             |
-| Lose              | `text-red-500`                  | `#ef4444`          | Defeat state              |
-| Draw              | `text-yellow-500`               | `#eab308`          | Draw state                |
-| Disabled bg       | `bg-gray-300`                   | `#d1d5db`          | Disabled buttons          |
-| Disabled text     | `text-gray-500`                 | `#6b7280`          | Disabled labels           |
+定数は `src/game/constants.ts` に集約。
 
-Light theme only. The gradient background provides visual richness.
+| 役割           | 定数              | Hex        | 用途       |
+| -------------- | ----------------- | ---------- | ---------- |
+| 背景（上半分） | `BG_COLOR_TOP`    | `0x3b82f6` | blue-500   |
+| 背景（下半分） | `BG_COLOR_BOTTOM` | `0x9333ea` | purple-600 |
+| カード地       | `CARD_COLOR`      | `0xffffff` | 白カード   |
+| 主テキスト     | `TEXT_PRIMARY`    | `0x1f2937` | gray-800   |
+| 補助テキスト   | `TEXT_SECONDARY`  | `0x4b5563` | gray-600   |
+| 勝利           | `COLOR_WIN`       | `0x22c55e` | green-500  |
+| 敗北           | `COLOR_LOSE`      | `0xef4444` | red-500    |
+| 引き分け       | `COLOR_DRAW`      | `0xeab308` | yellow-500 |
 
-## 3. Typography Rules
+ダーク版なし、ライト版のみ。PixiJS の Graphics で塗りを当てる場合は
+`.fill({ color: BG_COLOR_TOP })` のように 16 進整数で渡す。
 
-### Font Family
+### グラデ背景の描き方
 
-| Context | Family                          |
-| ------- | ------------------------------- |
-| Default | `Inter`, `system-ui`, sans-serif |
+シーン側で 2 枚の矩形 (上半分 / 下半分) を `Graphics().rect(...).fill()` で
+描いて重ねる近似でよい。本物のグラデが必要になったら Mesh + Shader だが、
+現状の DESIGN コンセプト的に 2 色矩形で十分。
 
-### Type Scale
+## 3. タイポグラフィ
 
-| Element          | Class      | Weight    | Notes               |
-| ---------------- | ---------- | --------- | -------------------- |
-| Page title       | `text-5xl` | `font-bold` | ~48px              |
-| Section header   | `text-2xl` | `font-bold` | ~24px              |
-| Card title       | `text-xl`  | `font-bold` | ~20px              |
-| Body text        | `text-base` | normal   | 16px                 |
-| Small text       | `text-sm`  | normal    | 14px                 |
+### フォント
 
-## 4. Component Stylings
+| 用途   | family                                        |
+| ------ | --------------------------------------------- |
+| 既定   | `'Inter, system-ui, sans-serif'`              |
+| 絵文字 | `'sans-serif'`（system emoji フォールバック） |
 
-### Hand Buttons (Emoji)
+### サイズ
 
-```
-bg-white text-gray-800
-rounded-lg shadow-lg
-p-4 text-center
-hover:scale-105 hover:shadow-2xl
-active:scale-95
-transition-transform
-```
+| 要素           | fontSize | weight | 備考                               |
+| -------------- | -------- | ------ | ---------------------------------- |
+| 大タイトル     | 72       | bold   | TitleScene の「JankenHub」         |
+| 見出し         | 36       | bold   | RuleSelect の「ルールを選ぶ」      |
+| カードタイトル | 22       | bold   | ルール名                           |
+| 補助テキスト   | 16       | normal | カードの説明文                     |
+| ヒント         | 22-28    | bold   | 「PRESS SPACE / TAP TO START」など |
+| 絵文字         | 40+      | n/a    | カードアイコン                     |
 
-Large emoji (text-4xl to text-5xl) as the primary visual. Label text below.
+PixiJS の Text は `new Text({ text, style })` で組む。anchor は `0.5`
+（中央寄せ）か `0.5, 0`（上端 + 横中央）が基本。
 
-### Rule Selector Cards
+## 4. コンポーネントスタイル
 
-```
-bg-white rounded-lg shadow-lg p-6
-hover:shadow-2xl
-transition-shadow
-cursor-pointer
-```
-
-Grid layout: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6`
-
-Disabled state: `bg-gray-300 opacity-50 cursor-not-allowed`
-
-### Result Display
-
-- Win: `text-green-500 text-3xl font-bold`
-- Lose: `text-red-500 text-3xl font-bold`
-- Draw: `text-yellow-500 text-3xl font-bold`
-
-### Score Display
-
-White card with shadow, centered text. Player names and scores in large bold text.
-
-### VS Indicator
-
-Centered between player hands, `text-2xl font-bold text-gray-400`.
-
-## 5. Layout Principles
-
-### Container
-
-- Centered: flex column, items-center
-- Padding: `p-8`
-- Max content width defined by card grid
-
-### Spacing Scale
-
-| Token        | Value |
-| ------------ | ----- |
-| Card gap     | `gap-6` (24px) |
-| Section gap  | `mb-8` (32px) |
-| Card padding | `p-6` or `p-8` |
-
-### Grid
-
-- Rule selector: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
-- Hand buttons: flex row with gap
-
-## 6. Depth & Elevation
-
-### Shadows
-
-- Default cards: `shadow-lg`
-- Hover: `shadow-2xl`
-- No inset shadows
-
-### Z-Index
-
-Simple stacking — no overlapping layers or modals in current UI.
-
-### Border Radius
-
-- Cards and buttons: `rounded-lg` (8px)
-- Full round for decorative elements: `rounded-full`
-
-## 7. Do's and Don'ts
-
-### Do
-
-- Use blue-to-purple gradient background on all pages
-- Place white cards with `shadow-lg` for all content containers
-- Use emoji at large sizes (text-4xl+) for game actions
-- Apply `hover:scale-105` + `hover:shadow-2xl` on interactive cards
-- Use `active:scale-95` for press feedback
-- Color-code results: green (win), red (lose), yellow (draw)
-- Use the responsive grid for rule selection
-
-### Don't
-
-- Use dark backgrounds or dark theme
-- Add complex animations beyond scale/shadow transitions
-- Use small or hidden emoji — they are the primary UI language
-- Override Tailwind classes with custom CSS
-- Add borders to cards — shadows handle elevation
-
-### Transitions
-
-| Context        | Effect                | Duration |
-| -------------- | --------------------- | -------- |
-| Card hover     | `shadow-lg → shadow-2xl` | default |
-| Button hover   | `scale(1.05)`         | default  |
-| Button press   | `scale(0.95)`         | default  |
-
-## 8. Responsive Behavior
-
-### Breakpoints (Tailwind defaults)
-
-| Name | Value  | Grid columns |
-| ---- | ------ | ------------ |
-| sm   | 640px  | 1            |
-| md   | 768px  | 2            |
-| lg   | 1024px | 3            |
-
-The rule selector grid collapses from 3 → 2 → 1 columns.
-
-### Mobile
-
-- Full-width cards with adequate padding
-- Touch targets: hand buttons are large emoji (48px+)
-- Stack layout on small screens
-
-## 9. Agent Prompt Guide
-
-### Color Quick Reference
+### ルールカード（白カード）
 
 ```
-Background gradient:  from-blue-500 (#3b82f6) to purple-600 (#9333ea)
-Card surface:         white (#ffffff)
-Text:                 gray-800 (#1f2937)
-Win:                  green-500 (#22c55e)
-Lose:                 red-500 (#ef4444)
-Draw:                 yellow-500 (#eab308)
-Disabled:             gray-300 (#d1d5db)
+Graphics
+  .roundRect(0, 0, CARD_W, CARD_H, 12)
+  .fill({ color: 0xffffff })
 ```
 
-### When generating UI for this project
+- 角丸: 12px
+- サイズ: 320 × 180（RuleSelectScene 既定）
+- シャドウ近似: `Graphics.roundRect(4, 6, w, h, 12).fill({ color: 0x000000, alpha: 0.25 })`
+  を本体の **裏側** に重ねる（PixiJS にネイティブの box-shadow は無い）
 
-- Blue-to-purple gradient background is the brand. Always present
-- White cards with `shadow-lg` for all panels. No dark surfaces
-- Emoji are the primary visual language — hand gestures at 48px+
-- Three result colors: green/red/yellow. These are the only semantic colors
-- Scale transforms for interaction (1.05 hover, 0.95 press)
-- Responsive grid: 1/2/3 columns at sm/md/lg
-- Inter font, no monospace, no decorative fonts
-- Keep it playful and approachable — this is a party game
+### ハンドボタン（絵文字）
 
-### Color Emotion Reference
+カード中央に絵文字 1 つ。`text-5xl 相当 = fontSize 40-48`。
+キーボード（1/2/3/4）でも操作できるよう数字ヒントを下部に置く。
 
-- **Blue→Purple gradient:** Energy, play, competition
-- **White cards:** Clarity, focus, clean game board
-- **Green (#22c55e):** Victory, success, celebration
-- **Red (#ef4444):** Defeat, try again
-- **Yellow (#eab308):** Tie, tension, not yet decided
+### 結果表示
+
+| 結果 | テキスト色              | サイズ |
+| ---- | ----------------------- | ------ |
+| WIN  | `COLOR_WIN` (0x22c55e)  | 48-72  |
+| LOSE | `COLOR_LOSE` (0xef4444) | 48-72  |
+| DRAW | `COLOR_DRAW` (0xeab308) | 48-72  |
+
+### スコア
+
+白カードに `TEXT_PRIMARY` で player 名と数字。
+中央に「VS」を `TEXT_SECONDARY` で添える。
+
+## 5. レイアウト
+
+ステージは固定 `STAGE_WIDTH = 800 / STAGE_HEIGHT = 600` (4:3)。
+`index.html` の CSS で `aspect-ratio: 800 / 600` を維持しつつ
+`max-width: 100vw / max-height: 100vh` で縮小表示する
+（PixiJS の `autoDensity: true` が canvas の inline style を上書きする
+ため `width: auto !important; height: auto !important;` で打ち消している）。
+
+### グリッド
+
+- ルール選択: 2 × 2 グリッド
+- カード間 gap: 32px
+- 中央配置: `(STAGE - gridSize) / 2`
+
+### 余白
+
+| 用途               | 値      |
+| ------------------ | ------- |
+| 画面端から         | 32px    |
+| カード間           | 32px    |
+| カード内パディング | 16-24px |
+
+## 6. 奥行きと階層
+
+PixiJS は z-index ではなく `addChild` の順序で奥行きを表現する。
+
+- 背景 Graphics（青/紫 2 枚）→ 最初に addChild
+- カード（影 → 本体 → アイコン → テキスト）の順に重ねる
+- 効果テキスト（FLASH / 勝敗アニメ）は最後に addChild
+
+シャドウは Graphics の半透明矩形をオフセットして敷く。
+モーダルや重ね合わせは現状なし（必要になったら `app.stage` の最後尾に
+覆い隠す Graphics を追加する）。
+
+## 7. インタラクション
+
+### スケール変化（カード）
+
+| 状態  | scale |
+| ----- | ----- |
+| 既定  | 1.0   |
+| hover | 1.05  |
+| 押下  | 0.95  |
+
+`card.on('pointerover' / 'pointerdown' / 'pointerup' / 'pointerout' /
+'pointerupoutside')` でハンドリング。`scale.set(...)` で変化させる。
+モバイルは hover を持たないので `pointerdown` → `pointerup` の 0.95 →
+1.0 だけが効く（pointerover が同時に発火する WebKit/Chromium 実装も
+あるので、不要な拡大が残らないよう `pointerout` で必ず 1.0 へ戻す）。
+
+### 入力エッジ検出
+
+タイトル等の「押しっぱなしですり抜ける」現象を防ぐため、
+`InputEdgeDetector` を経由して **状態遷移直後にもう一度離してから押す**
+ことを要求する。`triggerOnce()` / `setPressed(true|false)` / `disarm()`
+の 3 API のみ。
+
+## 8. レスポンシブ挙動
+
+ステージは固定サイズで、CSS の `aspect-ratio` で縮小表示する方針。
+
+- スマホ縦持ち: 横幅にフィット、上下にレターボックス
+- スマホ横持ち: 縦にフィット、左右にレターボックス
+- デスクトップ: 等倍以下で表示（ステージより大きくはしない）
+
+タッチターゲットは絵文字 + カード全面が反応するので、320 × 180px
+（拡大時）= スマホ実機でも 100 × 60px 以上は確保される。
+
+## 9. やる / やらない
+
+### やる
+
+- 青→紫グラデ背景は全シーン共通
+- 白カード + 影で要素を浮かせる
+- 絵文字を大きく使う（fontSize 40+）
+- カードは hover/press でスケール変化
+- 勝敗カラーは緑/赤/黄の 3 色だけ
+- ステージ固定 + CSS aspect-ratio で縮小レスポンシブ
+
+### やらない
+
+- ダーク版を作る
+- 凝った遷移アニメ（scale/alpha 以外を増やす）
+- ボーダー線（影で表現する）
+- カスタムフォントの読み込み（system font で十分）
+- z-index 制御（PixiJS では addChild 順）
+
+## 10. エージェント向けクイックリファレンス
+
+```ts
+// 16 進カラー
+BG_COLOR_TOP = 0x3b82f6 // blue-500
+BG_COLOR_BOTTOM = 0x9333ea // purple-600
+CARD_COLOR = 0xffffff
+TEXT_PRIMARY = 0x1f2937
+TEXT_SECONDARY = 0x4b5563
+COLOR_WIN = 0x22c55e
+COLOR_LOSE = 0xef4444
+COLOR_DRAW = 0xeab308
+
+// ステージ
+STAGE_WIDTH = 800
+STAGE_HEIGHT = 600
+
+// 典型スタイル
+const TITLE_STYLE = {
+  fill: 0xffffff,
+  fontSize: 72,
+  fontFamily: 'Inter, system-ui, sans-serif',
+  fontWeight: 'bold',
+}
+const HINT_STYLE = {
+  fill: 0xffffff,
+  fontSize: 24,
+  fontFamily: 'Inter, system-ui, sans-serif',
+  fontWeight: 'bold',
+}
+const CARD_STYLE = {
+  fill: TEXT_PRIMARY,
+  fontSize: 22,
+  fontFamily: 'Inter, system-ui, sans-serif',
+  fontWeight: 'bold',
+}
+```
+
+「ブランドの感情」:
+
+- 青→紫: エネルギー、遊び、競技性
+- 白カード: 明瞭さ、フォーカス、清潔なゲーム盤
+- 緑: 勝利、達成、祝祭
+- 赤: 敗北、再挑戦
+- 黄: 引き分け、緊張、未決
