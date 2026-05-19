@@ -61,7 +61,12 @@ export class App {
           this.replaceScene(new IdoJankenScene())
           break
         }
-        case 'achi_muite_hoi':
+        case 'achi_muite_hoi': {
+          const { AchiMuiteHoiScene } =
+            await import('./scenes/AchiMuiteHoiScene')
+          this.replaceScene(new AchiMuiteHoiScene())
+          break
+        }
         case 'glico': {
           const { GameScene } = await import('./scenes/GameScene')
           this.replaceScene(new GameScene(rule))
