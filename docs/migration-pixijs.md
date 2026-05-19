@@ -61,7 +61,7 @@ janken-hub/
 | #5    | 入力管理 (キーボード / ポインタ / マルチタッチ統一 InputManager)                            | 実装中     |
 | #6    | NPC AI とキャラクター表示 (Easy/Normal/Hard 難易度)                                         | 完了 (#18) |
 | #7    | Classic RPS シーン本実装 (3 手じゃんけん + 結果アニメ + 勝敗判定)                           | 完了 (#19) |
-| #8    | Ido Janken シーン (4 手・井戸ルール)                                                        | 未着手     |
+| #8    | Ido Janken シーン (4 手・井戸ルール)                                                        | 実装中     |
 | #9    | Achi Muite Hoi シーン (じゃんけん → 方向選択 2 段階フロー)                                  | 未着手     |
 | #10   | Glico Game シーン (階段ゲーム)                                                              | 未着手     |
 | #11   | LocalStorage 戦績保存 + 結果アニメ・SE                                                      | 未着手     |

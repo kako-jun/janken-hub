@@ -56,7 +56,11 @@ export class App {
           this.replaceScene(new ClassicRpsScene())
           break
         }
-        case 'ido_janken':
+        case 'ido_janken': {
+          const { IdoJankenScene } = await import('./scenes/IdoJankenScene')
+          this.replaceScene(new IdoJankenScene())
+          break
+        }
         case 'achi_muite_hoi':
         case 'glico': {
           const { GameScene } = await import('./scenes/GameScene')
