@@ -51,9 +51,12 @@ const ACHI_COUNTDOWN_TEXTS = ['あっちむいて', 'ホイ!']
 /** janken countdown 合計 ms (テスト参照) */
 export const JANKEN_COUNTDOWN_TOTAL_MS =
   COUNTDOWN_STEP_MS * JANKEN_COUNTDOWN_TEXTS.length
-/** achi countdown 合計 ms (テスト参照) */
-export const ACHI_COUNTDOWN_TOTAL_MS =
-  COUNTDOWN_STEP_MS * ACHI_COUNTDOWN_TEXTS.length
+/**
+ * achi countdown 合計 ms (テスト参照)。
+ * defender 役 (NPC 攻めのケース) でも反応時間を確保したいので、
+ * テキスト数 * step より長め (COUNTDOWN_STEP_MS * 3 相当 = 1500ms) に設定する。
+ */
+export const ACHI_COUNTDOWN_TOTAL_MS = COUNTDOWN_STEP_MS * 3
 const REVEAL_HOLD_MS = 400
 const FLASH_MS = 600
 const MATCH_END_MS = 1000
@@ -137,8 +140,19 @@ const JANKEN_BUTTONS: { hand: Hand; x: number }[] = [
  * 矢印キー (up/down/left/right) との対応はそのまま。
  */
 const ACHI_BUTTON_CENTER_X = STAGE_WIDTH / 2
-const ACHI_BUTTON_CENTER_Y = STAGE_HEIGHT - 130
-const ACHI_BUTTON_GAP = 90
+/**
+ * achi ボタンの中心 Y 座標。
+ * 下↓ボタンが STAGE 下端からはみ出さないようにする:
+ *   center_y + GAP + RADIUS <= STAGE_HEIGHT
+ *   STAGE_HEIGHT(600) - 170 + 100 + 50 = 580 <= 600
+ */
+const ACHI_CENTER_Y = STAGE_HEIGHT - 170
+const ACHI_BUTTON_CENTER_Y = ACHI_CENTER_Y
+/**
+ * 隣接ボタン中心距離は sqrt(2)*GAP = 141px。
+ * BUTTON_RADIUS=50 で直径 100px なので約 41px の余裕がある。
+ */
+const ACHI_BUTTON_GAP = 100
 const ACHI_BUTTONS: { dir: Direction; x: number; y: number }[] = [
   {
     dir: 'up',
@@ -497,18 +511,37 @@ export class AchiMuiteHoiScene extends Scene {
 
   // ---------- janken phase ----------
 
-  private tickJankenCountdown(): void {
-    const nextStep = Math.min(
-      Math.floor(this.elapsed / COUNTDOWN_STEP_MS),
-      JANKEN_COUNTDOWN_TEXTS.length
-    )
+  /**
+   * countdown の経過時間からステップを進め、必要ならテキストを更新する。
+   * tickJankenCountdown / tickAchiCountdown 共通ロジック。
+   *
+   * @param totalMs countdown 合計 ms (これを超えたら finished=true)
+   * @param stepMs  1 ステップの ms (= COUNTDOWN_STEP_MS)
+   * @param texts   ステップごとのテキスト
+   * @returns { step: 進んだ後の countdownStep, finished: totalMs を超えたか }
+   */
+  private progressCountdown(
+    totalMs: number,
+    stepMs: number,
+    texts: readonly string[]
+  ): { step: number; finished: boolean } {
+    const nextStep = Math.min(Math.floor(this.elapsed / stepMs), texts.length)
     if (nextStep > this.countdownStep) {
       this.countdownStep = nextStep
-      if (nextStep < JANKEN_COUNTDOWN_TEXTS.length) {
-        this.countdownText.text = JANKEN_COUNTDOWN_TEXTS[nextStep]
+      if (nextStep < texts.length) {
+        this.countdownText.text = texts[nextStep]
       }
     }
-    if (this.elapsed >= JANKEN_COUNTDOWN_TOTAL_MS) {
+    return { step: this.countdownStep, finished: this.elapsed >= totalMs }
+  }
+
+  private tickJankenCountdown(): void {
+    const { finished } = this.progressCountdown(
+      JANKEN_COUNTDOWN_TOTAL_MS,
+      COUNTDOWN_STEP_MS,
+      JANKEN_COUNTDOWN_TEXTS
+    )
+    if (finished) {
       this.enterJankenReveal()
     }
   }
@@ -522,13 +555,18 @@ export class AchiMuiteHoiScene extends Scene {
     }
     // NPC の手 (classic_rps として 3 手から選ぶ)。
     const npcMove = this.ai.chooseHand('classic_rps')
-    // 'well' は classic_rps では契約違反なので rock にフォールバック。
+    // 'well' は classic_rps では契約違反。rock 固定だと AI のクセが偏るので、
+    // 3 手 (rock/scissors/paper) から再抽選する。
     if (npcMove === 'well') {
       console.warn(
-        '[AchiMuiteHoiScene] NPC returned well for classic_rps; falling back to rock'
+        '[AchiMuiteHoiScene] NPC returned well for classic_rps; re-rolling among rock/scissors/paper'
       )
+      const hands: Hand[] = ['rock', 'scissors', 'paper']
+      const idx = Math.floor(this.random.next() * 3)
+      this.npcHand = hands[Math.min(idx, hands.length - 1)]
+    } else {
+      this.npcHand = npcMove as Hand
     }
-    this.npcHand = npcMove === 'well' ? 'rock' : (npcMove as Hand)
 
     this.lastJankenResult = judgeClassicRps(this.playerHand, this.npcHand)
 
@@ -589,7 +627,10 @@ export class AchiMuiteHoiScene extends Scene {
     this.countdownStep = 0
     this.countdownText.text = ACHI_COUNTDOWN_TEXTS[0]
     this.countdownText.visible = true
-    // janken の手は引き続き見えるが、reveal 用は隠す (achi の方向を表示するため)
+    // janken の手 reveal 用テキストは隠す。
+    // achi phase の reveal 時に同じ Text オブジェクトを使い回して方向アイコン
+    // (DIR_ICON) を表示するため、ここで一度クリアする。
+    // (専用 playerDirText を設けない簡易構成。デザイン変更時は再検討)
     this.playerHandText.visible = false
     this.npcHandText.visible = false
     // ボタン切替: janken hide, achi show
@@ -611,17 +652,12 @@ export class AchiMuiteHoiScene extends Scene {
   }
 
   private tickAchiCountdown(): void {
-    const nextStep = Math.min(
-      Math.floor(this.elapsed / COUNTDOWN_STEP_MS),
-      ACHI_COUNTDOWN_TEXTS.length
+    const { finished } = this.progressCountdown(
+      ACHI_COUNTDOWN_TOTAL_MS,
+      COUNTDOWN_STEP_MS,
+      ACHI_COUNTDOWN_TEXTS
     )
-    if (nextStep > this.countdownStep) {
-      this.countdownStep = nextStep
-      if (nextStep < ACHI_COUNTDOWN_TEXTS.length) {
-        this.countdownText.text = ACHI_COUNTDOWN_TEXTS[nextStep]
-      }
-    }
-    if (this.elapsed >= ACHI_COUNTDOWN_TOTAL_MS) {
+    if (finished) {
       this.enterAchiReveal()
     }
   }
@@ -662,12 +698,16 @@ export class AchiMuiteHoiScene extends Scene {
     this.elapsed = 0
     // attacker 視点で一致なら 'win' (= attacker point)。
     // プレイヤー視点では: attacker=p1 で win なら player point, attacker=p2 で win なら npc point。
+    // playerView は背景フラッシュ色の選択にのみ使う。
+    // lastAchiResult === 'lose' (= 方向が一致せず) のケースは「どちらにも
+    // point が入らない」中立状態なので、playerView 上では 'draw' に丸めて
+    // COLOR_DRAW で描画する。
     const playerView: RoundResult =
       this.lastAchiResult === 'win'
         ? this.attacker === 'p1'
           ? 'win'
           : 'lose'
-        : 'draw' // 一致しなかった = どちらにも point 入らず
+        : 'draw' // 'lose' (一致せず) は playerView の color 選択上 draw 扱いにする
     const color =
       playerView === 'win'
         ? COLOR_WIN
@@ -748,6 +788,7 @@ export class AchiMuiteHoiScene extends Scene {
           : this.score.p2 >= BEST_OF_WINS
             ? 'lose'
             : 'draw'
+      // input.dispose は destroyScene で一元化。tickMatchEnd では呼ばない。
       this.exit({ next: 'result', result })
     }
   }
