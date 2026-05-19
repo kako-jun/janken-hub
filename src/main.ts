@@ -33,6 +33,7 @@ const main = async (): Promise<void> => {
     background: '#000000',
     antialias: false,
     autoDensity: true,
+    // 3x retina (iPad Pro 等) でフィルレートが爆発するので 2 で頭打ちにする
     resolution: Math.min(window.devicePixelRatio || 1, 2),
   })
 

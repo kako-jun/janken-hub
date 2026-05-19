@@ -28,7 +28,10 @@
          * "<stageW>px"/"<stageH>px" を書き込むため、!important で上書きしないと
          * viewport にフィットしたときアスペクト比が崩れて中身が縦伸びする
          * (iPhone 等のポートレート)。max-width/max-height + aspect-ratio で
-         * 16:9 を保ったまま縮める。
+         * 4:3 を保ったまま縮める。
+         *
+         * NOTE: aspect-ratio の数値は src/game/constants.ts の
+         * STAGE_WIDTH / STAGE_HEIGHT と同期させること。
          */
         width: auto !important;
         height: auto !important;

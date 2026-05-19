@@ -165,8 +165,8 @@ npm run format
 - 公開 URL: https://janken-hub.llll-ll.com
 - 配信: **Cloudflare Pages**（`server: cloudflare`）。main への push で
   Cloudflare 側が自動ビルド・デプロイする
-- `.github/workflows/deploy.yml` も GitHub Pages 向けのフォールバックとして
-  ルートビルドを設定済み（実運用は Cloudflare Pages 側）
+- `vite.config.ts` の `base: '/'` は Cloudflare Pages のルート配信前提。
+  GitHub Pages (`/janken-hub/` 配下) には対応しない
 
 ## テスト方針
 
@@ -183,6 +183,7 @@ npm run format
 
 1. `index.html` → `#loading` を表示
 2. `main.ts` → `pixi.js/text` / `pixi.js/graphics` を side-effect import
+   （詳細は「PixiJS v8 の pipe 事前登録」セクション）
 3. `Application.init({ width: 800, height: 600, ... })` で renderer 構築
 4. `#game` に canvas を挿入
 5. `App` インスタンス生成 → `app.startTitle()` で TitleScene 起動

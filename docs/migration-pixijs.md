@@ -1,144 +1,90 @@
-# PixiJS v8 移植進捗 (#2 - #12)
+# PixiJS v8 移植経緯（歴史ドキュメント）
 
-janken-hub は当初 React 18 + Tailwind CSS + FastAPI + Docker Compose の構成だった
-（README.md / CLAUDE.md / DESIGN.md / docs/architecture.md はその構成の記述）。
-2026-05 以降、**PixiJS v8 + Vite + TypeScript** のフロント完結アプリへ全面移植中。
-最終形は endroll-jumpers / yatagarrage / legend-of-window-ninja と同じ構成。
+janken-hub は当初 **React 18 + Tailwind CSS + FastAPI + Docker Compose**
+の構成で立ち上がり（旧 `frontend/` + `backend/`）、2026-05 から
+**PixiJS v8 + Vite + TypeScript** のフロント完結アプリへ全面移植された。
 
-新旧の構成はリポジトリ内に **並存** している。`#12` で旧構成（frontend/ / backend/ /
-compose.yaml / Dockerfile.dev）とドキュメント類が全削除され、PixiJS 構成のみが残る予定。
+移植は GitHub Issue `#2` 〜 `#12` で進行し、`#12` で旧スタックの撤去と
+ドキュメント書き直しを完了して終了している。本ファイルは「なぜこの構成に
+なっているか」を後から振り返るための歴史ドキュメント。**現状アーキテクチャは
+[../CLAUDE.md](../CLAUDE.md) を正本とする**。
 
-## 新構成 (ルート直下)
+## 移植の流れ
 
-```
-janken-hub/
-├── index.html              # PixiJS 用エントリ HTML
-├── package.json            # pixi.js@^8 / vite@^6 / vitest@^4 / typescript@^5
-├── tsconfig.json           # strict + noUnused* + bundler resolution
-├── vite.config.ts          # base: /janken-hub/, test.environment: 'jsdom'
-├── eslint.config.js        # flat config, frontend/backend は ignores
-├── .prettierrc
-├── .husky/                 # lint-staged hook
-├── src/
-│   ├── main.ts             # PixiJS Application を初期化し App に渡す
-│   ├── vite-env.d.ts
-│   └── game/
-│       ├── App.ts          # シーン切替コントローラ (isTransitioning ガード付き)
-│       ├── Scene.ts        # 基底クラス (enter / exit / update / resize / destroyScene)
-│       ├── constants.ts    # STAGE_WIDTH/HEIGHT, DESIGN.md カラー定数
-│       ├── state.ts        # initWithState (GameState ファクトリ)
-│       ├── types.ts        # Hand / GameState / RuleState など
-│       └── scenes/
-│           ├── TitleScene.ts
-│           ├── RuleSelectScene.ts
-│           ├── GameScene.ts     # プレースホルダ (#7-#10 で本実装)
-│           └── ResultScene.ts
-└── docs/
-    ├── architecture.md          # 旧 React/FastAPI 設計図 (#12 で更新予定)
-    └── migration-pixijs.md      # このファイル
-```
+| Issue | 内容                                                          | 状態   |
+| ----- | ------------------------------------------------------------- | ------ |
+| #2    | React/Tailwind/FastAPI を除去し PixiJS v8 + Vite 環境を整える | 完了   |
+| #3    | GameState 型定義と initWithState 実装                         | 完了   |
+| #4    | シーン基盤（Title → RuleSelect → Game → Result）              | 完了   |
+| #5    | 入力管理 InputManager 実装                                    | 完了   |
+| #6    | NPC AI とキャラクター表示（Easy/Normal/Hard）                 | 完了   |
+| #7    | Classic RPS シーン                                            | 完了   |
+| #8    | Ido Janken シーン（4 手・井戸ルール）                         | 完了   |
+| #9    | Achi Muite Hoi シーン（2 段階フロー）                         | 完了   |
+| #10   | Glico シーン                                                  | 未着手 |
+| #11   | LocalStorage 戦績保存 + 結果アニメ・SE                        | 未着手 |
+| #12   | 旧 React/FastAPI 全削除 + ドキュメント書き直し                | 完了   |
 
-並存する旧構成（このフェーズでは触らない）:
+旧 backend (FastAPI / WebSocket) は当時はリアルタイム対戦サーバとして
+存在していたが、PixiJS 版は NPC 対戦オンリーのフロント完結に方針転換した
+ため不要になった。旧 backend の依存スナップショットが必要になったら
+commit `efb63df^` の `backend/uv.lock` / `backend/pyproject.toml` を
+参照する。
 
-- `frontend/` — React + Vite の旧 UI
-- `backend/` — FastAPI + WebSocket
-- `compose.yaml`, `frontend/Dockerfile.dev`
-- `README.md`, `CLAUDE.md`, `DESIGN.md` — Tailwind 言及あり、`#12` で書き換え
+## 設計判断のメモ
 
-参考リポ（同じ構成の手本）:
+### シーン基盤を `pixi.js` の `Container` 直継承にした理由
 
-- `kako-jun/legend-of-window-ninja`
-- `kako-jun/endroll-jumpers`
-- `kako-jun/yatagarrage`
+State machine と Scene Graph を 1 つにまとめると、シーン破棄時に
+`destroy({ children: true })` だけで描画ツリーごと消せて、リスナの
+片付けと組み合わせれば「シーンに付随する全リソース」が原子的に開放できる。
+`legend-of-window-ninja` で実証済みのパターン。
 
-## ロードマップ
+### `GameState` をシーン外に置いた理由
 
-| Issue | 内容                                                                                        | 状態       |
-| ----- | ------------------------------------------------------------------------------------------- | ---------- |
-| #2    | PixiJS v8 + Vite + TypeScript 環境をルートに併設                                            | 完了 (#13) |
-| #3    | `GameState` 型定義と `initWithState`                                                        | 完了 (#14) |
-| #4    | シーン基盤 (Title → RuleSelect → Game → Result)                                             | 完了 (#15) |
-| #5    | 入力管理 (キーボード / ポインタ / マルチタッチ統一 InputManager)                            | 実装中     |
-| #6    | NPC AI とキャラクター表示 (Easy/Normal/Hard 難易度)                                         | 完了 (#18) |
-| #7    | Classic RPS シーン本実装 (3 手じゃんけん + 結果アニメ + 勝敗判定)                           | 完了 (#19) |
-| #8    | Ido Janken シーン (4 手・井戸ルール)                                                        | 実装中     |
-| #9    | Achi Muite Hoi シーン (じゃんけん → 方向選択 2 段階フロー)                                  | 実装中     |
-| #10   | Glico Game シーン (階段ゲーム)                                                              | 未着手     |
-| #11   | LocalStorage 戦績保存 + 結果アニメ・SE                                                      | 未着手     |
-| #12   | 旧 React/Tailwind/backend 削除 + README/CLAUDE/DESIGN/architecture を PixiJS 構成に書き換え | 未着手     |
+ルール判定（純粋関数）とシーン（描画 + 状態機械）を分離するため。
+`src/game/rules/*.ts` は紙と鉛筆で書ける純粋ロジックに保ち、シーンは
+それを呼ぶだけ。`initWithState` で fixture / リスタート / セーブ復元が
+同じ経路を通る。
 
-## 起動方法 (PixiJS 構成)
+### ステージサイズ 800 × 600 (4:3)
 
-リポジトリのルートで実行する。`frontend/` / `backend/` には入らない。
+レトロ感を出すための意図的な選択。`src/game/constants.ts` で固定値として
+定義し、`index.html` の CSS `aspect-ratio: 800 / 600` で 4:3 を保ったまま
+スマホでも縮小表示する。`autoDensity: true` が canvas の inline style に
+寸法を書き込むため、CSS で `width: auto !important; height: auto !important`
+を打ち消す必要がある（再発防止メモ参照）。
 
-```bash
-npm install         # 依存解決
-npm run dev         # http://localhost:3000 で PixiJS Application が起動
-npm run typecheck   # tsc --noEmit
-npm run lint        # eslint .
-npm run test        # vitest run
-npm run build       # tsc && vite build → dist/
-```
+### カラー定数を Tailwind の hex 値で取り込んだ理由
 
-`base` を `/janken-hub/` にしているため、GitHub Pages の
-`https://kako-jun.github.io/janken-hub/` 配下に置く想定。
+旧 React 版の DESIGN.md は Tailwind クラス前提で書かれており、ブランド色
+（青→紫グラデ・白カード・緑/赤/黄の勝敗）はそのまま新版でも採用したかった。
+`src/game/constants.ts` で Tailwind パレットの hex 値を定数化することで、
+DESIGN.md と 1:1 で対応するようにしてある。
 
-## 主要設計判断
+## 移植中に発見した落とし穴（再発防止メモ）
 
-### シーン構造
+### PixiJS v8 の renderPipe 事前登録
 
-`Scene` 基底クラスは `PIXI.Container` を継承し、`enter()` / `exit(param)` /
-`update(deltaMs)` / `resize(w, h)` / `destroyScene()` を持つ。
-シーン切替は `App.replaceScene()` が `destroyScene()` → `addChild` →
-`enter()` の順に呼び、`isTransitioning` フラグで動的 `import()` 中の多重遷移を防ぐ
-（legend-of-window-ninja と同じ方針）。
+`Text` / `Graphics` 等のクラスが持つ renderPipe は、各クラスの `init.mjs`
+の **side-effect import** で `extensions.add(...)` 経由で登録される。
+`Application.init()` は登録済み pipe を **1 度だけスナップショット** して
+`renderer.renderPipes` マップを構築するため、シーン側の dynamic import
+越しに Text/Graphics を引っ張る構成だと **本番ビルドだけ** で
+`Cannot read properties of undefined (reading 'updateRenderable')` が出る
+（dev では同期評価なので顕在化しない）。
 
-各シーンは `enter()` で `keydown` / `keyup` / `pointerdown` を `window` に
-addEventListener し、`destroyScene()` の冒頭で removeEventListener する。
-シーン切替時にリスナが残らないことを単体テストで検証する方針。
+対策: `src/main.ts` 冒頭で `import 'pixi.js/text'` /
+`import 'pixi.js/graphics'` を side-effect import し、init() より先に
+pipe を登録させる。`src/main.test.ts` が回帰防止ガード。
 
-### GameState
+### canvas のアスペクト比
 
-`GameState` はシーン横断の純粋データ。`ruleState` は `kind` 付き判別共用体で
-`classic_rps` / `ido_janken` / `achi_muite_hoi` / `glico` を切り替える。
-`initWithState(partial)` は `partial.rule` を切り替えると `ruleState` を
-自動でルール用デフォルトに整合させる（kind 不一致なら破棄）。
-テスト fixture / シーンリスタート / セーブ復元で同じ関数を使う。
+`autoDensity: true` が canvas の **inline style** に
+`"<STAGE_WIDTH>px"` / `"<STAGE_HEIGHT>px"` を書き込むため、
+`max-width: 100vw / max-height: 100vh` だけだとスマホで縦伸びする。
 
-### カラー定数
-
-DESIGN.md の Tailwind カラーを 16 進数で `constants.ts` に取り込む。
-`COLOR_WIN = 0x22c55e` / `COLOR_LOSE = 0xef4444` / `COLOR_DRAW = 0xeab308`。
-ResultScene が `RoundResult` から色を選ぶ。
-
-### ステージサイズ
-
-`STAGE_WIDTH = 800` / `STAGE_HEIGHT = 600` 固定。
-CSS 側 (`index.html`) で `canvas { max-width: 100vw; max-height: 100vh }`
-にして縮小表示。`resize()` フックは将来のレスポンシブ調整用に空 override で持つ。
-
-## 移植完了後の状態
-
-`#12` (2026-05-20 完了) で:
-
-- `frontend/` / `backend/` / `compose.yaml` / `docs/architecture.md` を削除
-- `eslint.config.js` の `ignores` から `frontend` / `backend` を削除
-- `.github/workflows/deploy.yml` をルートビルドに修正
-- `CLAUDE.md` / `README.md` / `DESIGN.md` を PixiJS 構成に書き直し
-
-本ファイルは移植経緯の歴史ドキュメントとして残してある。
-現状アーキテクチャは [CLAUDE.md](../CLAUDE.md) を参照。
-
-### 移植中に発見した落とし穴（再発防止用メモ）
-
-- **PixiJS v8 の pipe 事前登録**: `Text` / `Graphics` の renderPipe は
-  各クラスの side-effect import で登録される。`Application.init()` は
-  登録済み pipe を 1 度だけスナップショットするため、Scene の dynamic
-  import 越しに Text/Graphics を引っ張る構成だと本番ビルドだけで
-  「Cannot read properties of undefined (reading 'updateRenderable')」
-  が出る。`main.ts` で `import 'pixi.js/text'` / `'pixi.js/graphics'` を
-  side-effect import して事前登録させる
-- **canvas のアスペクト比**: `autoDensity: true` が inline style に
-  寸法を書き込むため、`max-width: 100vw / max-height: 100vh` だけだと
-  スマホで縦伸びする。`width: auto !important` + `aspect-ratio: 800/600`
-  で打ち消す
+対策: CSS で `width: auto !important; height: auto !important;` を当てた
+うえで `aspect-ratio: 800 / 600` を指定し、4:3 を保ったまま縮める。
+`src/index-html.test.ts` が回帰防止ガード（`STAGE_WIDTH` / `STAGE_HEIGHT`
+との同期も検証）。
