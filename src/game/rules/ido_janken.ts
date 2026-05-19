@@ -28,5 +28,12 @@ export const judgeIdoJanken = (p1: IdoHand, p2: IdoHand): RoundResult => {
   ) {
     return 'win'
   }
+  // 型上は到達不可能だが、上の well 分岐が将来編集で壊れたときに
+  // 'lose' を黙って返してしまうリグレッションを防ぐための assert。
+  /* c8 ignore next */
+  if (p1 === 'well' || p2 === 'well')
+    throw new Error(
+      'unreachable: well case must be handled above: ' + p1 + ' vs ' + p2
+    )
   return 'lose'
 }

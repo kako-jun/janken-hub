@@ -32,7 +32,8 @@ export const COUNTDOWN_TOTAL_MS = COUNTDOWN_STEP_MS * COUNTDOWN_TEXTS.length
 const REVEAL_HOLD_MS = 400
 const FLASH_MS = 600
 const MATCH_END_MS = 1000
-const BEST_OF_WINS = 2 // 先取 2 勝 = best-of-3
+// 先取 2 勝 = best-of-3。将来 #11 で UI 選択化可能。
+const BEST_OF_WINS = 2
 /** best-of-3 の最大ラウンド数。ROUND ヘッダ表示に使う (= 3)。 */
 const BEST_OF_MAX_ROUNDS = BEST_OF_WINS * 2 - 1
 
@@ -79,13 +80,18 @@ const MATCH_END_STYLE = {
 
 const BUTTON_STYLE = {
   fill: 0xffffff,
+  // classic (50/56) より一段小さくして 4 ボタン横並びに対応。
   fontSize: 48,
   fontFamily: 'Inter, system-ui, sans-serif',
 } as const
 
+// classic (50/56) より一段小さくして 4 ボタン横並びに対応。
 const BUTTON_RADIUS = 48
 const BUTTON_Y = STAGE_HEIGHT - 90
-/** 4 ボタンを中央寄せで横並びさせる際のボタン間距離 (中心-中心)。 */
+/**
+ * 4 ボタンを中央寄せで横並びさせる際のボタン間距離 (中心-中心)。
+ * 4 個 × 直径 96 + 余白で STAGE_WIDTH=800 に収まる。
+ */
 const BUTTON_GAP = 130
 
 /**
@@ -370,8 +376,10 @@ export class IdoJankenScene extends Scene {
       const idx = Math.floor(this.random.next() * hands.length)
       this.playerHand = hands[Math.min(idx, hands.length - 1)]
     }
-    // ido_janken では NPC AI は 'well' を含む IdoHand を返してよい (1st-class)。
-    this.npcHand = this.ai.chooseHand('ido_janken') as IdoHand
+    // ido_janken は 4 手 (well 含む) を 1st-class に受けるため、
+    // ClassicRpsScene のような well フォールバック warn は不要。
+    // NpcAI.chooseHand の戻り型 (Hand | IdoHand) は IdoHand と構造的に互換。
+    this.npcHand = this.ai.chooseHand('ido_janken')
 
     this.lastResult = judgeIdoJanken(this.playerHand, this.npcHand)
 

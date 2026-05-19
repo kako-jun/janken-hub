@@ -1,10 +1,4 @@
 // Ido Janken 判定の全 16 ペア (4x4) を網羅 (Issue #8)。
-//
-// 期待値の内訳:
-// - draw: 4 件 (同じ手同士)
-// - win (p1 勝ち): 6 件 (rock>scissors, scissors>paper, paper>rock, well>rock,
-//                       well>scissors, paper>well)
-// - lose (p1 負け): 6 件 (上記の対称)
 
 import { describe, expect, it } from 'vitest'
 import { judgeIdoJanken } from './ido_janken'
