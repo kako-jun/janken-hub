@@ -58,10 +58,12 @@ export interface InputManagerOptions {
  * - 4 / f / F → select4
  * - ArrowUp/Down/Left/Right → up/down/left/right
  * - Space (' ') / Enter → confirm
+ *   ※ 古い IME/環境で ev.key が ' ' で来ない場合に備えて
+ *      ev.code === 'Space' もフォールバックとして confirm にする。
  * - Escape → cancel
  */
-function keyToAction(key: string): InputAction | null {
-  switch (key) {
+function keyToAction(ev: KeyboardEvent): InputAction | null {
+  switch (ev.key) {
     case '1':
     case 'a':
     case 'A':
@@ -92,6 +94,9 @@ function keyToAction(key: string): InputAction | null {
     case 'Escape':
       return 'cancel'
     default:
+      // 古い IME / 一部環境では Space で ev.key が ' ' にならないケースがあるため
+      // ev.code === 'Space' をフォールバックとして拾う。
+      if (ev.code === 'Space') return 'confirm'
       return null
   }
 }
@@ -111,13 +116,14 @@ export class InputManager {
   private readonly canvas?: HTMLCanvasElement
   private disposed = false
 
-  private actionHandlers: Set<InputActionHandler> = new Set()
-  private pointerHandlers: Set<InputPointerHandler> = new Set()
+  private readonly actionHandlers: Set<InputActionHandler> = new Set()
+  private readonly pointerHandlers: Set<InputPointerHandler> = new Set()
 
   /** action が現在押下中かどうか。複数の物理キーが同じ action にマップされる場合は OR。 */
-  private pressedActions: Map<InputAction, Set<string>> = new Map()
+  private readonly pressedActions: Map<InputAction, Set<string>> = new Map()
   /** 現在 down 中の pointerId → canvas 相対座標 */
-  private activePointers: Map<number, { x: number; y: number }> = new Map()
+  private readonly activePointers: Map<number, { x: number; y: number }> =
+    new Map()
 
   constructor(opts: InputManagerOptions = {}) {
     this.target = opts.target ?? window
@@ -168,7 +174,8 @@ export class InputManager {
   /** 現在押下中のポインタ一覧 (canvas 相対座標)。マルチタッチ用。 */
   getActivePointers(): Map<number, { x: number; y: number }> {
     // 内部 Map を直接返すと外から書き換えられるのでコピーを返す。
-    return new Map(this.activePointers)
+    // 値オブジェクト {x,y} も shallow copy して外部 mutate を完全に防ぐ。
+    return new Map([...this.activePointers].map(([k, v]) => [k, { ...v }]))
   }
 
   /** 指定 action に対応する物理キーが 1 つでも押下中なら true。 */
@@ -208,7 +215,7 @@ export class InputManager {
   // ---------- handlers ----------
 
   private onKeyDown = (ev: KeyboardEvent): void => {
-    const action = keyToAction(ev.key)
+    const action = keyToAction(ev)
     if (action === null) return
 
     // isKeyDown 用の押下状態は repeat も含めて維持する。
@@ -226,7 +233,7 @@ export class InputManager {
   }
 
   private onKeyUp = (ev: KeyboardEvent): void => {
-    const action = keyToAction(ev.key)
+    const action = keyToAction(ev)
     if (action === null) return
     const set = this.pressedActions.get(action)
     if (!set) return
@@ -237,26 +244,31 @@ export class InputManager {
   }
 
   private onPointerDown = (ev: PointerEvent): void => {
+    // pointerId が undefined で来る合成イベントを Map のキーにすると
+    // 後から消せなくなるので、-1 にフォールバックする。
+    const pointerId = ev.pointerId ?? -1
     const { x, y } = this.toCanvasCoords(ev.clientX, ev.clientY)
-    this.activePointers.set(ev.pointerId, { x, y })
+    this.activePointers.set(pointerId, { x, y })
     this.emitPointer({
       x,
       y,
       clientX: ev.clientX,
       clientY: ev.clientY,
-      pointerId: ev.pointerId,
+      pointerId,
     })
   }
 
   private onPointerMove = (ev: PointerEvent): void => {
+    const pointerId = ev.pointerId ?? -1
     // 押下中の pointer のみ追跡。hover は無視。
-    if (!this.activePointers.has(ev.pointerId)) return
+    if (!this.activePointers.has(pointerId)) return
     const { x, y } = this.toCanvasCoords(ev.clientX, ev.clientY)
-    this.activePointers.set(ev.pointerId, { x, y })
+    this.activePointers.set(pointerId, { x, y })
   }
 
   private onPointerUp = (ev: PointerEvent): void => {
-    this.activePointers.delete(ev.pointerId)
+    const pointerId = ev.pointerId ?? -1
+    this.activePointers.delete(pointerId)
   }
 
   // ---------- emit / coord helpers ----------

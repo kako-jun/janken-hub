@@ -100,6 +100,18 @@ describe('InputManager', () => {
       expect(handler).toHaveBeenNthCalledWith(2, 'confirm')
     })
 
+    it("ev.key が ' ' でなくても ev.code === 'Space' なら confirm を emit する (古い IME フォールバック)", () => {
+      manager = new InputManager()
+      const handler = vi.fn()
+      manager.onAction(handler)
+      const ev = new KeyboardEvent('keydown', { key: 'Spacebar' })
+      // KeyboardEvent の code は読み取り専用 + コンストラクタで未設定の環境があるため
+      // Object.defineProperty で 'Space' を後付けする。
+      Object.defineProperty(ev, 'code', { value: 'Space', configurable: true })
+      window.dispatchEvent(ev)
+      expect(handler).toHaveBeenCalledExactlyOnceWith('confirm')
+    })
+
     it('Escape は cancel を emit する', () => {
       manager = new InputManager()
       const handler = vi.fn()
@@ -424,6 +436,26 @@ describe('InputManager', () => {
       )
       expect(manager.getActivePointers().has(99)).toBe(false)
       expect(manager.getActivePointers().size).toBe(0)
+    })
+
+    it('pointerId 未定義のイベントは id=-1 として扱われ、pointerup で消える', () => {
+      manager = new InputManager()
+      const handler = vi.fn()
+      manager.onPointer(handler)
+      // pointerId を設定せずに dispatch する (一部環境の合成イベント想定)
+      const down = new Event('pointerdown', { bubbles: true })
+      Object.assign(down, { clientX: 11, clientY: 22 })
+      window.dispatchEvent(down)
+      expect(handler).toHaveBeenCalledTimes(1)
+      const arg = handler.mock.calls[0][0]
+      expect(arg.pointerId).toBe(-1)
+      expect(manager.getActivePointers().get(-1)).toEqual({ x: 11, y: 22 })
+
+      // 同じく pointerId 未定義の pointerup で削除されること
+      const up = new Event('pointerup', { bubbles: true })
+      Object.assign(up, { clientX: 11, clientY: 22 })
+      window.dispatchEvent(up)
+      expect(manager.getActivePointers().has(-1)).toBe(false)
     })
 
     it('getActivePointers() の戻り Map を mutate しても内部状態は変わらない', () => {
