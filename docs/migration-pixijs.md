@@ -58,13 +58,13 @@ janken-hub/
 | #2    | PixiJS v8 + Vite + TypeScript 環境をルートに併設                                            | 完了 (#13) |
 | #3    | `GameState` 型定義と `initWithState`                                                        | 完了 (#14) |
 | #4    | シーン基盤 (Title → RuleSelect → Game → Result)                                             | 完了 (#15) |
-| #5    | じゃんけん勝敗判定 (Classic RPS) ロジック + テスト                                          | 未着手     |
-| #6    | NPC ロジック (easy = ランダム)                                                              | 未着手     |
-| #7    | Classic RPS GameScene 本実装                                                                | 未着手     |
-| #8    | Ido Janken (井戸じゃんけん)                                                                 | 未着手     |
-| #9    | Achi Muite Hoi (あっちむいてホイ)                                                           | 未着手     |
-| #10   | Glico (階段じゃんけん)                                                                      | 未着手     |
-| #11   | スコア表示・ベストオブ進行 UI                                                               | 未着手     |
+| #5    | 入力管理 (キーボード / ポインタ / マルチタッチ統一 InputManager)                            | 実装中     |
+| #6    | NPC AI とキャラクター表示 (Easy/Normal/Hard 難易度)                                         | 未着手     |
+| #7    | Classic RPS シーン本実装 (3 手じゃんけん + 結果アニメ + 勝敗判定)                           | 未着手     |
+| #8    | Ido Janken シーン (4 手・井戸ルール)                                                        | 未着手     |
+| #9    | Achi Muite Hoi シーン (じゃんけん → 方向選択 2 段階フロー)                                  | 未着手     |
+| #10   | Glico Game シーン (階段ゲーム)                                                              | 未着手     |
+| #11   | LocalStorage 戦績保存 + 結果アニメ・SE                                                      | 未着手     |
 | #12   | 旧 React/Tailwind/backend 削除 + README/CLAUDE/DESIGN/architecture を PixiJS 構成に書き換え | 未着手     |
 
 ## 起動方法 (PixiJS 構成)
